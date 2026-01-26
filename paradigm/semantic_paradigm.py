@@ -87,12 +87,19 @@ class SemanticVisualizationExperiment:
         
         # Create audio stimulus
         try:
+            # Try creating sound with frequency
             self.beep = sound.Sound(
                 value=self.config.get('BEEP_FREQUENCY', 440),
                 secs=self.config.get('BEEP_DURATION', 0.1)
             )
-        except:
-            self.beep = sound.Sound('A', octave=4, secs=0.1)
+        except Exception as e:
+            # Fallback to note-based sound
+            try:
+                self.beep = sound.Sound('A', octave=4, secs=self.config.get('BEEP_DURATION', 0.1))
+            except Exception as e2:
+                # Last resort: create minimal sound or None
+                print(f"Warning: Sound creation failed: {e}, {e2}")
+                self.beep = None
         
         # Data storage
         self.trial_data = []
@@ -156,8 +163,9 @@ class SemanticVisualizationExperiment:
             timestamp, _ = self.trigger_handler.send_trigger(TRIGGER_CODES['beep'])
             trial_data['timestamps']['beeps'].append(timestamp)
             
-            self.beep.stop()
-            self.beep.play()
+            if self.beep is not None:
+                self.beep.stop()
+                self.beep.play()
             
             print(f"  Beep {beep_idx + 1}/{n_beeps} at {timestamp:.3f}s")
             core.wait(beep_interval)
@@ -192,8 +200,9 @@ class SemanticVisualizationExperiment:
             countdown = f'Visualizing... {n_beeps - beep_idx}'
             self.display.show_text(countdown, height=0.05, color='gray')
             
-            self.beep.stop()
-            self.beep.play()
+            if self.beep is not None:
+                self.beep.stop()
+                self.beep.play()
             core.wait(beep_interval)
         
         # Rest

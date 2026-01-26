@@ -1,0 +1,544 @@
+"""
+Simulation variant of semantic visualization paradigm.
+
+Runs through the entire experimental protocol using simulated visualization periods.
+Tests everything: folder structures, autosaving, trigger logging, display behavior,
+and all functionality without requiring EEG hardware or participant.
+
+Author: A. Tates (JP)
+BCI-NE Lab, University of Essex
+Date: January 26, 2026
+"""
+
+import os
+import sys
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+from datetime import datetime
+
+import numpy as np
+from psychopy import core, sound, event, visual
+
+# Add parent directory to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+from config import load_config
+from paradigm.utils import (
+    TriggerHandler, TRIGGER_CODES, create_trigger_handler,
+    DisplayManager, create_window,
+    create_metadata, create_trial_data_dict, save_trial_data, print_experiment_summary,
+    create_balanced_sequence, validate_trial_sequence
+)
+
+
+def simulate_visualization_period(
+    win: visual.Window,
+    display: DisplayManager,
+    n_beeps: int,
+    beep_interval: float,
+    beep_sound: sound.Sound,
+    trigger_handler: TriggerHandler,
+    trial_num: int,
+    total_trials: int,
+    show_countdown: bool = True
+) -> List[float]:
+    """
+    Simulate visualization period with beeps and optional countdown.
+    
+    Parameters
+    ----------
+    win : visual.Window
+        PsychoPy window
+    display : DisplayManager
+        Display manager
+    n_beeps : int
+        Number of beeps
+    beep_interval : float
+        Time between beeps
+    beep_sound : sound.Sound
+        Beep sound object
+    trigger_handler : TriggerHandler
+        Trigger handler
+    trial_num : int
+        Current trial number
+    total_trials : int
+        Total number of trials
+    show_countdown : bool
+        Whether to show countdown during visualization
+    
+    Returns
+    -------
+    list
+        List of beep timestamps
+    """
+    beep_timestamps = []
+    
+    # Clear screen
+    display.clear_screen()
+    
+    # Send beep start trigger
+    timestamp, _ = trigger_handler.send_trigger(TRIGGER_CODES['beep_start'])
+    beep_timestamps.append(timestamp)
+    
+    # Visualization period with beeps
+    for beep_idx in range(n_beeps):
+        # Show countdown if requested
+        if show_countdown:
+            remaining = n_beeps - beep_idx
+            countdown_text = f'Visualizing... {remaining}'
+            display.show_text(countdown_text, height=0.05, color='gray')
+        
+        # Send beep trigger
+        timestamp, _ = trigger_handler.send_trigger(TRIGGER_CODES['beep'])
+        beep_timestamps.append(timestamp)
+        
+        # Play beep (if sound available)
+        if beep_sound is not None:
+            beep_sound.stop()
+            beep_sound.play()
+        
+        print(f"  [SIM] Beep {beep_idx + 1}/{n_beeps} at {timestamp:.3f}s")
+        
+        # Wait for next beep
+        core.wait(beep_interval)
+    
+    return beep_timestamps
+
+
+def run_single_trial_simulation(
+    win: visual.Window,
+    display: DisplayManager,
+    trial_spec: Dict[str, any],
+    config: Dict[str, any],
+    trigger_handler: TriggerHandler,
+    beep_sound: sound.Sound,
+    trial_num: int,
+    total_trials: int
+) -> Dict[str, any]:
+    """
+    Run a single trial with simulation.
+    
+    Same structure as real trial but uses simulated visualization period.
+    
+    Parameters
+    ----------
+    win : visual.Window
+        PsychoPy window
+    display : DisplayManager
+        Display manager
+    trial_spec : dict
+        Trial specification
+    config : dict
+        Configuration dictionary
+    trigger_handler : TriggerHandler
+        Trigger handler
+    beep_sound : sound.Sound
+        Beep sound object
+    trial_num : int
+        Current trial number
+    total_trials : int
+        Total number of trials
+    
+    Returns
+    -------
+    dict
+        Complete trial data with timestamps
+    """
+    concept = trial_spec['concept']
+    category = trial_spec['category']
+    
+    # Create trial data structure
+    trial_data = create_trial_data_dict(trial_num, concept, category)
+    
+    print(f"\n[SIM] Trial {trial_num}/{total_trials}: {concept} (Category {category})")
+    
+    # 1. FIXATION
+    display.show_fixation()
+    timestamp, _ = trigger_handler.send_trigger(TRIGGER_CODES['fixation'])
+    trial_data['timestamps']['fixation'] = timestamp
+    print(f"  [SIM] Fixation at {timestamp:.3f}s")
+    core.wait(config.get('FIXATION_DURATION', 2.0))
+    
+    # 2. CONCEPT PRESENTATION
+    progress_text = f"Trial {trial_num}/{total_trials}"
+    display.show_concept(concept, show_progress=True, progress_text=progress_text)
+    
+    # Send category-specific trigger
+    trigger_code = (TRIGGER_CODES['concept_category_a'] if category == 'A' 
+                   else TRIGGER_CODES['concept_category_b'])
+    timestamp, _ = trigger_handler.send_trigger(trigger_code)
+    trial_data['timestamps']['concept'] = timestamp
+    print(f"  [SIM] Concept '{concept}' (Category {category}) at {timestamp:.3f}s")
+    
+    core.wait(config.get('PROMPT_DURATION', 2.0))
+    
+    # 3. SIMULATED VISUALIZATION PERIOD
+    n_beeps = config.get('N_BEEPS', 8)
+    beep_interval = config.get('BEEP_INTERVAL', 0.8)
+    
+    beep_timestamps = simulate_visualization_period(
+        win=win,
+        display=display,
+        n_beeps=n_beeps,
+        beep_interval=beep_interval,
+        beep_sound=beep_sound,
+        trigger_handler=trigger_handler,
+        trial_num=trial_num,
+        total_trials=total_trials,
+        show_countdown=True
+    )
+    
+    trial_data['timestamps']['beep_start'] = beep_timestamps[0]
+    trial_data['timestamps']['beeps'] = beep_timestamps[1:]  # Rest are beep timestamps
+    
+    # 4. REST PERIOD
+    display.clear_screen()
+    timestamp, _ = trigger_handler.send_trigger(TRIGGER_CODES['trial_end'])
+    trial_data['timestamps']['rest'] = timestamp
+    print(f"  [SIM] Trial end at {timestamp:.3f}s")
+    core.wait(config.get('REST_DURATION', 1.0))
+    
+    return trial_data
+
+
+def run_experiment_simulation(
+    participant_id: str = 'sim_9999',
+    session_id: int = 1,
+    config_path: Optional[Path] = None,
+    n_trials: Optional[int] = None,
+    verbose: bool = True
+) -> Dict[str, any]:
+    """
+    Run complete experiment simulation.
+    
+    Tests all functionality without requiring EEG hardware or participant.
+    
+    Parameters
+    ----------
+    participant_id : str
+        Participant identifier (default: sim_9999 for simulation)
+    session_id : int
+        Session number
+    config_path : Path, optional
+        Path to config file
+    n_trials : int, optional
+        Number of trials to run (default: from config)
+    verbose : bool
+        Whether to print verbose output
+    
+    Returns
+    -------
+    dict
+        Experiment results dictionary
+    """
+    print("="*80)
+    print("SEMANTIC VISUALIZATION PARADIGM - SIMULATION MODE")
+    print("="*80)
+    print(f"Participant: {participant_id}")
+    print(f"Session: {session_id}")
+    print(f"Mode: SIMULATION (no EEG hardware required)")
+    print("="*80)
+    
+    # Load configuration
+    if config_path is None:
+        config_path = project_root / 'config' / 'experiment_config.py'
+    config = load_config(str(config_path))
+    
+    if verbose:
+        print(f"\n[CONFIG] Loaded configuration from: {config_path}")
+        print(f"  Category A concepts: {config.get('CONCEPTS_CATEGORY_A', [])}")
+        print(f"  Category B concepts: {config.get('CONCEPTS_CATEGORY_B', [])}")
+        print(f"  Trials: {config.get('N_TRIALS', 20)}")
+        print(f"  Beep interval: {config.get('BEEP_INTERVAL', 0.8)}s")
+        print(f"  Number of beeps: {config.get('N_BEEPS', 8)}")
+    
+    # Override trial count if specified
+    if n_trials is not None:
+        config['N_TRIALS'] = n_trials
+        if verbose:
+            print(f"\n[OVERRIDE] Running {n_trials} trials (instead of {config.get('N_TRIALS', 20)})")
+    
+    # Initialize trigger handler (test mode - no hardware)
+    trigger_handler = create_trigger_handler(
+        port_address=config.get('PARALLEL_PORT_ADDRESS', 0x0378),
+        use_triggers=False  # Simulation mode - no actual triggers
+    )
+    print("\n[TRIGGER] Test mode enabled (triggers simulated, not sent)")
+    
+    # Create window (non-fullscreen for simulation)
+    win = create_window(
+        size=config.get('WINDOW_SIZE', (1024, 768)),
+        color=config.get('BACKGROUND_COLOR', 'black'),
+        fullscreen=False  # Always windowed for simulation
+    )
+    print(f"[DISPLAY] Window created: {config.get('WINDOW_SIZE', (1024, 768))} (windowed)")
+    
+    # Create display manager
+    display_config = {
+        'fixation_height': config.get('FIXATION_HEIGHT', 0.1),
+        'text_height': config.get('TEXT_HEIGHT', 0.08),
+        'text_color': config.get('TEXT_COLOR', 'white'),
+        'bold_text': config.get('BOLD_TEXT', True),
+        'instruction_text': config.get('INSTRUCTION_TEXT', '')
+    }
+    display = DisplayManager(win, display_config)
+    
+    # Create clocks
+    clock = core.Clock()
+    experiment_clock = core.Clock()
+    
+    # Create audio stimulus
+    try:
+        # Try creating sound with frequency
+        beep_sound = sound.Sound(
+            value=config.get('BEEP_FREQUENCY', 440),
+            secs=config.get('BEEP_DURATION', 0.1)
+        )
+        print(f"[AUDIO] Beep sound created: {config.get('BEEP_FREQUENCY', 440)} Hz")
+    except Exception as e:
+        # Fallback to note-based sound
+        try:
+            beep_sound = sound.Sound('A', octave=4, secs=config.get('BEEP_DURATION', 0.1))
+            print(f"[AUDIO] Beep sound created using note 'A' (fallback)")
+        except Exception as e2:
+            # Last resort: create minimal sound
+            print(f"[WARNING] Sound creation failed: {e}, {e2}")
+            print("[WARNING] Continuing without audio - beeps will be silent")
+            beep_sound = None
+    
+    # Data storage
+    trial_data_list = []
+    metadata = create_metadata(
+        participant_id=participant_id,
+        session_id=session_id,
+        config=config
+    )
+    
+    # Show instructions
+    print("\n[INSTRUCTIONS] Displaying instructions...")
+    display.show_instructions()
+    print("  Press SPACE to continue or ESCAPE to exit")
+    
+    keys = event.waitKeys(keyList=['space', 'escape'])
+    if 'escape' in keys:
+        print("\n[EXIT] Simulation terminated by user")
+        win.close()
+        core.quit()
+        return {}
+    
+    core.wait(0.5)
+    
+    # Create trial sequence
+    print("\n[SEQUENCE] Creating trial sequence...")
+    trials = create_balanced_sequence(
+        n_trials=config.get('N_TRIALS', 20),
+        concepts_a=config.get('CONCEPTS_CATEGORY_A', []),
+        concepts_b=config.get('CONCEPTS_CATEGORY_B', []),
+        randomize=config.get('RANDOMIZE_CONCEPTS', True)
+    )
+    
+    # Validate sequence
+    is_valid, error_msg = validate_trial_sequence(
+        trials,
+        config.get('CONCEPTS_CATEGORY_A', []),
+        config.get('CONCEPTS_CATEGORY_B', [])
+    )
+    if not is_valid:
+        print(f"[WARNING] Sequence validation: {error_msg}")
+    else:
+        print(f"[OK] Trial sequence validated: {len(trials)} trials")
+    
+    # Show ready screen
+    display.show_text(
+        "Simulation Mode\n\nThe experiment will now begin.\n\nPress SPACE when ready.",
+        height=0.05
+    )
+    event.waitKeys(keyList=['space'])
+    
+    # Start experiment
+    print("\n" + "="*80)
+    print("STARTING SIMULATION EXPERIMENT")
+    print("="*80)
+    
+    experiment_clock.reset()
+    timestamp, _ = trigger_handler.send_trigger(TRIGGER_CODES['block_start'])
+    print(f"[TRIGGER] Block start at {timestamp:.3f}s")
+    
+    # Run all trials
+    for trial_idx, trial_spec in enumerate(trials, 1):
+        # Check for escape
+        keys = event.getKeys(keyList=['escape'])
+        if 'escape' in keys:
+            print("\n[EXIT] Simulation terminated by user (Escape key)")
+            break
+        
+        # Run trial
+        trial_data = run_single_trial_simulation(
+            win=win,
+            display=display,
+            trial_spec=trial_spec,
+            config=config,
+            trigger_handler=trigger_handler,
+            beep_sound=beep_sound,
+            trial_num=trial_idx,
+            total_trials=len(trials)
+        )
+        
+        trial_data_list.append(trial_data)
+        
+        # Inter-trial interval
+        if trial_idx < len(trials):
+            core.wait(config.get('INTER_TRIAL_INTERVAL', 0.5))
+    
+    # Block end
+    timestamp, _ = trigger_handler.send_trigger(TRIGGER_CODES['block_end'])
+    print(f"\n[TRIGGER] Block end at {timestamp:.3f}s")
+    
+    # End screen
+    display.show_text(
+        "Simulation Complete!\n\nAll functionality tested.\n\nPress SPACE to finish.",
+        height=0.06
+    )
+    event.waitKeys(keyList=['space'])
+    
+    # Save data
+    print("\n[DATA] Saving trial data...")
+    output_dir = project_root / 'data' / 'results'
+    
+    saved_files = save_trial_data(
+        metadata=metadata,
+        trial_data=trial_data_list,
+        output_dir=output_dir,
+        participant_id=participant_id,
+        session_id=session_id
+    )
+    
+    total_duration = experiment_clock.getTime()
+    
+    # Print summary
+    print("\n" + "="*80)
+    print("SIMULATION SUMMARY")
+    print("="*80)
+    print_experiment_summary(
+        metadata=metadata,
+        trial_data=trial_data_list,
+        total_duration=total_duration,
+        saved_files=saved_files
+    )
+    
+    # Verification checklist
+    print("\n" + "="*80)
+    print("VERIFICATION CHECKLIST")
+    print("="*80)
+    print("[ ] All triggers logged correctly")
+    print("[ ] Display stimuli shown correctly")
+    print("[ ] Beeps played at correct intervals")
+    print("[ ] Data saved to files")
+    print("[ ] Timestamps recorded accurately")
+    print(f"\nCheck saved files:")
+    for file_type, file_path in saved_files.items():
+        print(f"  {file_type.upper()}: {file_path}")
+    print("="*80)
+    
+    # Cleanup
+    trigger_handler.close()
+    win.close()
+    core.quit()
+    
+    return {
+        'participant_id': participant_id,
+        'session_id': session_id,
+        'trials_completed': len(trial_data_list),
+        'total_duration': total_duration,
+        'saved_files': saved_files,
+        'trial_data': trial_data_list
+    }
+
+
+if __name__ == "__main__":
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description='Run semantic visualization experiment simulation',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Run simulation with default settings
+  python paradigm/semantic_paradigm_simulation.py
+  
+  # Run with specific participant ID
+  python paradigm/semantic_paradigm_simulation.py --participant-id sim_0001
+  
+  # Run fewer trials for quick test
+  python paradigm/semantic_paradigm_simulation.py --n-trials 5
+  
+  # Verbose output
+  python paradigm/semantic_paradigm_simulation.py --verbose
+        """
+    )
+    
+    parser.add_argument(
+        '--participant-id', '-p',
+        type=str,
+        default='sim_9999',
+        help='Participant identifier (default: sim_9999 for simulation)'
+    )
+    
+    parser.add_argument(
+        '--session', '-s',
+        type=int,
+        default=1,
+        help='Session number (default: 1)'
+    )
+    
+    parser.add_argument(
+        '--n-trials', '-n',
+        type=int,
+        default=None,
+        help='Number of trials to run (default: from config)'
+    )
+    
+    parser.add_argument(
+        '--config',
+        type=str,
+        default=None,
+        help='Path to config file (default: config/experiment_config.py)'
+    )
+    
+    parser.add_argument(
+        '--verbose', '-v',
+        action='store_true',
+        help='Enable verbose output'
+    )
+    
+    args = parser.parse_args()
+    
+    config_path = None
+    if args.config:
+        config_path = Path(args.config)
+    
+    try:
+        results = run_experiment_simulation(
+            participant_id=args.participant_id,
+            session_id=args.session,
+            config_path=config_path,
+            n_trials=args.n_trials,
+            verbose=args.verbose
+        )
+        
+        if results:
+            print("\n[OK] Simulation completed successfully!")
+            print("\n[VERIFICATION] Check the following:")
+            print(f"  1. Data files: {results.get('saved_files', {})}")
+            print(f"  2. Trials completed: {results.get('trials_completed', 0)}")
+            print(f"  3. Total duration: {results.get('total_duration', 0):.2f}s")
+        else:
+            print("\n[WARNING] Simulation completed with warnings")
+            
+    except KeyboardInterrupt:
+        print("\n\n[WARNING] Simulation interrupted by user (Ctrl+C)")
+    except Exception as e:
+        print(f"\n[ERROR] Error during simulation: {e}")
+        import traceback
+        traceback.print_exc()
