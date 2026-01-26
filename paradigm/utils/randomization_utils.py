@@ -221,13 +221,13 @@ def create_stratified_block_sequence(
     # Handle remainder if trials don't divide evenly
     remainder_a = trials_per_category - len(concept_list_a)
     if remainder_a > 0:
-        # Distribute remainder randomly
-        extra_a = np.random.choice(concepts_a, remainder_a, replace=False)
+        # Distribute remainder randomly (with replacement if needed)
+        extra_a = np.random.choice(concepts_a, remainder_a, replace=True)
         concept_list_a.extend(extra_a)
     
     remainder_b = trials_per_category - len(concept_list_b)
     if remainder_b > 0:
-        extra_b = np.random.choice(concepts_b, remainder_b, replace=False)
+        extra_b = np.random.choice(concepts_b, remainder_b, replace=True)
         concept_list_b.extend(extra_b)
     
     # Shuffle within each category
