@@ -1,31 +1,40 @@
 """
 Trigger utilities for EEG synchronization.
 
-Handles parallel port communication for sending trigger codes to EEG systems.
+Handles parallel port and Biosemi serial port communication for sending trigger codes to EEG systems.
 Based on best practices: send trigger to EEG stream first, then log to PsychoPy.
 Includes CSV mirror logging for trigger verification.
 """
 
 from psychopy import parallel, core
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, TYPE_CHECKING
 from pathlib import Path
 import csv
 import logging
 from datetime import datetime
+
+if TYPE_CHECKING:
+    import serial
 
 logger = logging.getLogger(__name__)
 
 
 class TriggerHandler:
     """
-    Handler for EEG trigger communication via parallel port.
+    Handler for EEG trigger communication via parallel port and/or Biosemi serial port.
     
     Follows best practice: send trigger to EEG stream first, then log.
     Includes CSV mirror logging for trigger verification.
+    
+    Priority order for trigger sending:
+    1. Biosemi serial port (if connected)
+    2. Parallel port (if enabled)
+    3. CSV logging (always)
     """
     
     def __init__(self, port_address: int = 0x0378, use_triggers: bool = False,
-                 csv_log_path: Optional[Path] = None):
+                 csv_log_path: Optional[Path] = None,
+                 biosemi_connection: Optional['serial.Serial'] = None):
         """
         Initialize trigger handler.
         
@@ -37,9 +46,12 @@ class TriggerHandler:
             Whether to actually send triggers (False for testing)
         csv_log_path : Path, optional
             Path to CSV file for trigger logging (mirror log)
+        biosemi_connection : serial.Serial, optional
+            Biosemi serial port connection. If provided, triggers will be sent to Biosemi.
         """
         self.port_address = port_address
         self.use_triggers = use_triggers
+        self.biosemi_connection = biosemi_connection
         self.parallel_port = None
         self.clock = core.Clock()
         self.csv_log_path = csv_log_path
@@ -94,12 +106,17 @@ class TriggerHandler:
         Best practice: Send trigger to EEG stream FIRST, then log timestamp.
         This ensures EEG recording captures the trigger even if logging fails.
         
+        Priority order:
+        1. Biosemi serial port (if connected)
+        2. Parallel port (if enabled)
+        3. CSV logging (always)
+        
         Parameters
         ----------
         trigger_code : int
             Trigger code to send (0-255)
         hold_duration : float
-            How long to hold trigger high (seconds, default 0.01)
+            How long to hold trigger high (seconds, default 0.01) - only for parallel port
         event_name : str, optional
             Human-readable event name for logging
         
@@ -113,23 +130,35 @@ class TriggerHandler:
         timestamp = self.clock.getTime()
         success = False
         
-        # Send trigger to EEG stream FIRST (critical for synchronization)
-        if self.use_triggers and self.parallel_port:
+        # Priority 1: Send to Biosemi data stream FIRST (if connected)
+        if self.biosemi_connection is not None:
+            try:
+                from .biosemi_utils import send_biosemi_trigger
+                biosemi_success = send_biosemi_trigger(self.biosemi_connection, trigger_code)
+                if biosemi_success:
+                    success = True
+                    logger.debug(f"Trigger {trigger_code} sent to Biosemi at {timestamp:.3f}s")
+                else:
+                    logger.warning(f"Failed to send trigger {trigger_code} to Biosemi")
+            except Exception as e:
+                logger.warning(f"Error sending trigger {trigger_code} to Biosemi: {e}")
+        
+        # Priority 2: Send to parallel port (if enabled and Biosemi didn't succeed)
+        if not success and self.use_triggers and self.parallel_port:
             try:
                 self.parallel_port.setData(trigger_code)
                 core.wait(hold_duration)  # Hold trigger
                 self.parallel_port.setData(0)  # Reset to zero
                 success = True
+                logger.debug(f"Trigger {trigger_code} sent via parallel port at {timestamp:.3f}s")
             except Exception as e:
-                logger.warning(f"Failed to send trigger {trigger_code}: {e}")
+                logger.warning(f"Failed to send trigger {trigger_code} via parallel port: {e}")
         
         # Log timestamp AFTER sending trigger (best practice)
-        if success:
-            logger.debug(f"Trigger {trigger_code} sent at {timestamp:.3f}s")
-        else:
+        if not success:
             logger.debug(f"Trigger {trigger_code} simulated at {timestamp:.3f}s")
         
-        # Log to CSV mirror file
+        # Priority 3: Always log to CSV mirror file
         self._log_trigger_to_csv(timestamp, trigger_code, event_name, success)
         
         # Store in memory log
@@ -383,13 +412,11 @@ def get_block_end_code(block_num: int) -> int:
     if block_num < 1 or block_num > 9:
         raise ValueError(f"Block number must be between 1 and 9, got {block_num}")
     return 250 + block_num
-    if block_num < 1 or block_num > 9:
-        raise ValueError(f"Block number must be between 1 and 9, got {block_num}")
-    return 250 + block_num
 
 
 def create_trigger_handler(port_address: int = 0x0378, use_triggers: bool = False,
-                           csv_log_path: Optional[Path] = None) -> TriggerHandler:
+                           csv_log_path: Optional[Path] = None,
+                           biosemi_connection: Optional['serial.Serial'] = None) -> TriggerHandler:
     """
     Factory function to create trigger handler.
     
@@ -401,11 +428,17 @@ def create_trigger_handler(port_address: int = 0x0378, use_triggers: bool = Fals
         Whether to enable triggers
     csv_log_path : Path, optional
         Path to CSV file for trigger logging (mirror log)
+    biosemi_connection : serial.Serial, optional
+        Biosemi serial port connection. If provided, triggers will be sent to Biosemi.
     
     Returns
     -------
     TriggerHandler
         Initialized trigger handler
     """
-    return TriggerHandler(port_address=port_address, use_triggers=use_triggers,
-                         csv_log_path=csv_log_path)
+    return TriggerHandler(
+        port_address=port_address,
+        use_triggers=use_triggers,
+        csv_log_path=csv_log_path,
+        biosemi_connection=biosemi_connection
+    )

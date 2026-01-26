@@ -1,0 +1,801 @@
+"""
+Live variant of semantic visualization paradigm.
+
+Runs the complete experimental protocol with live Biosemi EEG data capture.
+Connects to Biosemi hardware, sends real triggers to the data stream, and enables
+real-time data capture during experiments.
+
+Author: A. Tates (JP)
+BCI-NE Lab, University of Essex
+Date: January 26, 2026
+"""
+
+import os
+import sys
+import re
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+from datetime import datetime
+
+import numpy as np
+from psychopy import core, sound, event, visual
+
+# Add parent directory to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+from config import load_config
+from paradigm.utils import (
+    TriggerHandler, TRIGGER_CODES, create_trigger_handler,
+    get_trial_start_code, get_trial_end_code,
+    get_block_start_code, get_block_end_code,
+    get_beep_code, get_beep_codes,
+    DisplayManager, create_window,
+    create_metadata, create_trial_data_dict, save_trial_data, print_experiment_summary,
+    create_balanced_sequence, validate_trial_sequence, create_stratified_block_sequence,
+    create_beep_sound, play_beep,
+    jittered_wait,
+    get_subject_folder, find_subject_folders, get_latest_subject_folder,
+    find_block_folders, get_next_block_number, get_block_folder_path, ensure_block_folder,
+    save_randomization_protocol, load_randomization_protocol, get_block_trials_from_protocol,
+    connect_biosemi, verify_biosemi_connection, close_biosemi_connection
+)
+
+
+def run_visualization_period(
+    win: visual.Window,
+    display: DisplayManager,
+    n_beeps: int,
+    beep_interval: float,
+    beep_sound: sound.Sound,
+    trigger_handler: TriggerHandler,
+    trial_num: int,
+    total_trials: int
+) -> List[float]:
+    """
+    Run visualization period with beeps.
+    
+    Fixation cross stays on screen during beeps.
+    
+    Parameters
+    ----------
+    win : visual.Window
+        PsychoPy window
+    display : DisplayManager
+        Display manager
+    n_beeps : int
+        Number of beeps
+    beep_interval : float
+        Time between beeps
+    beep_sound : sound.Sound
+        Beep sound object
+    trigger_handler : TriggerHandler
+        Trigger handler
+    trial_num : int
+        Current trial number
+    total_trials : int
+        Total number of trials
+    
+    Returns
+    -------
+    list
+        List of beep timestamps
+    """
+    beep_timestamps = []
+    
+    # Send beep start trigger
+    timestamp, _ = trigger_handler.send_trigger(
+        TRIGGER_CODES['beep_start'],
+        event_name='beep_start'
+    )
+    beep_timestamps.append(timestamp)
+    
+    # Visualization period with beeps (fixation stays on screen)
+    # Get beep trigger codes dynamically based on n_beeps
+    beep_trigger_codes = get_beep_codes(n_beeps, max_beeps=8)
+    
+    for beep_idx in range(n_beeps):
+        # Redraw fixation (keeps it visible during beeps)
+        display.show_fixation()
+        
+        # Use dynamic beep code
+        trigger_code = beep_trigger_codes[beep_idx]
+        timestamp, _ = trigger_handler.send_trigger(
+            trigger_code,
+            event_name=f'beep_{beep_idx + 1}_{n_beeps}'
+        )
+        beep_timestamps.append(timestamp)
+        
+        # Play beep using utility function
+        play_beep(beep_sound, stop_first=True)
+        
+        print(f"  Beep {beep_idx + 1}/{n_beeps} (trigger {trigger_code}) at {timestamp:.3f}s")
+        
+        # Fixed interval - NO JITTER (critical for rhythmic protocol)
+        # 0.8s interval provides sufficient buffer time between triggers
+        core.wait(beep_interval)
+    
+    return beep_timestamps
+
+
+def run_single_trial_live(
+    win: visual.Window,
+    display: DisplayManager,
+    trial_spec: Dict[str, any],
+    config: Dict[str, any],
+    trigger_handler: TriggerHandler,
+    beep_sound: sound.Sound,
+    trial_num: int,
+    total_trials: int
+) -> Dict[str, any]:
+    """
+    Run a single trial with live EEG capture.
+    
+    Same structure as simulation but uses real triggers.
+    
+    Parameters
+    ----------
+    win : visual.Window
+        PsychoPy window
+    display : DisplayManager
+        Display manager
+    trial_spec : dict
+        Trial specification
+    config : dict
+        Configuration dictionary
+    trigger_handler : TriggerHandler
+        Trigger handler
+    beep_sound : sound.Sound
+        Beep sound object
+    trial_num : int
+        Current trial number
+    total_trials : int
+        Total number of trials
+    
+    Returns
+    -------
+    dict
+        Complete trial data with timestamps
+    """
+    concept = trial_spec['concept']
+    category = trial_spec['category']
+    
+    # Create trial data structure
+    trial_data = create_trial_data_dict(trial_num, concept, category)
+    
+    print(f"\nTrial {trial_num}/{total_trials}: {concept} (Category {category})")
+    
+    # Send trial start trigger (unique code for this trial number)
+    trial_start_code = get_trial_start_code(trial_num)
+    timestamp, _ = trigger_handler.send_trigger(
+        trial_start_code,
+        event_name=f'trial_{trial_num}_start'
+    )
+    trial_data['timestamps']['trial_start'] = timestamp
+    print(f"  Trial {trial_num} start (trigger {trial_start_code}) at {timestamp:.3f}s")
+    
+    # 1. FIXATION (NO JITTER - important timing)
+    display.show_fixation()
+    timestamp, _ = trigger_handler.send_trigger(
+        TRIGGER_CODES['fixation'],
+        event_name='fixation'
+    )
+    trial_data['timestamps']['fixation'] = timestamp
+    print(f"  Fixation at {timestamp:.3f}s")
+    core.wait(config.get('FIXATION_DURATION', 2.0))
+    
+    # 2. CONCEPT PRESENTATION
+    progress_text = f"Trial {trial_num}/{total_trials}"
+    display.show_concept(concept, show_progress=True, progress_text=progress_text)
+    
+    # Send category-specific trigger
+    trigger_code = (TRIGGER_CODES['concept_category_a'] if category == 'A' 
+                   else TRIGGER_CODES['concept_category_b'])
+    event_name = f'concept_{concept}_category_{category}'
+    timestamp, _ = trigger_handler.send_trigger(trigger_code, event_name=event_name)
+    trial_data['timestamps']['concept'] = timestamp
+    print(f"  Concept '{concept}' (Category {category}) at {timestamp:.3f}s")
+    
+    # NO JITTER - important timing for concept presentation
+    core.wait(config.get('PROMPT_DURATION', 2.0))
+    
+    # Clear concept and pause before beeps (JITTERED - pause event)
+    display.clear_screen()
+    use_jitter = config.get('USE_JITTER', True)
+    jitter_range = config.get('JITTER_RANGE', 0.1)
+    post_concept_pause = config.get('POST_CONCEPT_PAUSE', 1.0)
+    core.wait(jittered_wait(post_concept_pause, jitter_range) if use_jitter else post_concept_pause)
+    
+    # Show fixation cross (stays on during beeps)
+    display.show_fixation()
+    
+    # 3. VISUALIZATION PERIOD (fixation stays on screen)
+    n_beeps = config.get('N_BEEPS', 8)
+    beep_interval = config.get('BEEP_INTERVAL', 0.8)
+    
+    beep_timestamps = run_visualization_period(
+        win=win,
+        display=display,
+        n_beeps=n_beeps,
+        beep_interval=beep_interval,
+        beep_sound=beep_sound,
+        trigger_handler=trigger_handler,
+        trial_num=trial_num,
+        total_trials=total_trials
+    )
+    
+    trial_data['timestamps']['beep_start'] = beep_timestamps[0]
+    trial_data['timestamps']['beeps'] = beep_timestamps[1:]  # Rest are beep timestamps
+    
+    # 4. REST PERIOD
+    display.clear_screen()
+    
+    # Send trial end trigger (unique code for this trial number)
+    trial_end_code = get_trial_end_code(trial_num)
+    timestamp, _ = trigger_handler.send_trigger(
+        trial_end_code,
+        event_name=f'trial_{trial_num}_end'
+    )
+    trial_data['timestamps']['rest'] = timestamp
+    print(f"  Trial {trial_num} end (trigger {trial_end_code}) at {timestamp:.3f}s")
+    
+    # Rest (JITTERED - pause event)
+    use_jitter = config.get('USE_JITTER', True)
+    jitter_range = config.get('JITTER_RANGE', 0.1)
+    rest_duration = config.get('REST_DURATION', 1.0)
+    core.wait(jittered_wait(rest_duration, jitter_range) if use_jitter else rest_duration)
+    
+    return trial_data
+
+
+def run_experiment_live(
+    participant_id: str,
+    biosemi_port: str = 'COM3',
+    config_path: Optional[Path] = None,
+    n_trials: Optional[int] = None,
+    n_beeps: Optional[int] = None,
+    verbose: bool = True
+) -> Dict[str, any]:
+    """
+    Run complete experiment with live Biosemi EEG data capture.
+    
+    Connects to Biosemi hardware, sends real triggers, and captures live data.
+    Automatically detects existing blocks and runs the next block in sequence.
+    
+    Parameters
+    ----------
+    participant_id : str
+        Participant identifier
+    biosemi_port : str
+        Serial port for Biosemi (default: COM3)
+    config_path : Path, optional
+        Path to config file
+    n_trials : int, optional
+        Number of trials to run (default: from config)
+    n_beeps : int, optional
+        Override number of beeps per trial (1-8)
+    verbose : bool
+        Whether to print verbose output
+        
+    Returns
+    -------
+    dict
+        Experiment results dictionary
+    """
+    print("="*80)
+    print("SEMANTIC VISUALIZATION PARADIGM - LIVE MODE")
+    print("="*80)
+    print(f"Participant: {participant_id}")
+    print(f"Mode: LIVE (Biosemi EEG capture)")
+    print("="*80)
+    
+    # Connect to Biosemi
+    biosemi_conn = None
+    try:
+        biosemi_conn = connect_biosemi(port=biosemi_port)
+        if not verify_biosemi_connection(biosemi_conn):
+            raise RuntimeError("Biosemi connection verification failed")
+        print(f"[BIOSEMI] Connected to {biosemi_port}")
+    except Exception as e:
+        print(f"[WARNING] Biosemi connection failed: {e}")
+        print("[WARNING] Continuing without Biosemi (triggers will be simulated)")
+        # Continue anyway (for testing without hardware)
+    
+    # Load configuration
+    if config_path is None:
+        config_path = project_root / 'config' / 'experiment_config.py'
+    config = load_config(str(config_path))
+    
+    if verbose:
+        print(f"\n[CONFIG] Loaded configuration from: {config_path}")
+        print(f"  Category A concepts: {config.get('CONCEPTS_CATEGORY_A', [])}")
+        print(f"  Category B concepts: {config.get('CONCEPTS_CATEGORY_B', [])}")
+        print(f"  Trials: {config.get('N_TRIALS', 20)}")
+        print(f"  Beep interval: {config.get('BEEP_INTERVAL', 0.8)}s")
+        print(f"  Number of beeps: {config.get('N_BEEPS', 8)}")
+    
+    # Override N_BEEPS if provided via CLI (for rapid testing)
+    if n_beeps is not None:
+        if n_beeps < 1 or n_beeps > 8:
+            raise ValueError(f"N_BEEPS must be between 1 and 8, got {n_beeps}")
+        config['N_BEEPS'] = n_beeps
+        if verbose:
+            print(f"\n[OVERRIDE] Using {n_beeps} beeps per trial (instead of {config.get('N_BEEPS', 8)})")
+    
+    # Override trial count if specified (do this BEFORE protocol generation)
+    if n_trials is not None:
+        config['N_TRIALS'] = n_trials
+        if verbose:
+            print(f"\n[OVERRIDE] Running {n_trials} trials total (instead of {config.get('N_TRIALS', 20)})")
+    
+    # Set up results directory and subject folder
+    # Live data goes to data/results (not sim_data)
+    results_dir = project_root / 'data' / 'results'
+    results_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Get or create subject folder
+    # Check if subject folder already exists (for continuing blocks)
+    existing_subject_folders = find_subject_folders(results_dir, participant_id)
+    
+    if existing_subject_folders:
+        # Use existing subject folder (most recent)
+        subject_folder = existing_subject_folders[0]
+        if verbose:
+            print(f"\n[SUBJECT] Using existing subject folder: {subject_folder.name}")
+    else:
+        # Create new subject folder with timestamp
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        subject_folder = get_subject_folder(results_dir, participant_id, timestamp)
+        if verbose:
+            print(f"\n[SUBJECT] Created new subject folder: {subject_folder.name}")
+    
+    # Extract timestamp from subject folder name for use in randomization
+    folder_name = subject_folder.name
+    timestamp_match = re.search(r'(\d{8}_\d{6})$', folder_name)
+    if timestamp_match:
+        timestamp = timestamp_match.group(1)
+    else:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')  # Fallback
+    
+    # Check for existing block folders within subject folder
+    existing_blocks = find_block_folders(subject_folder)
+    
+    # Initialize all_blocks_trials here so it's accessible later
+    all_blocks_trials = []
+    protocol = None
+    
+    if not existing_blocks:
+        # No blocks exist - need to generate randomization protocol first
+        print("\n[BLOCK] No existing blocks found. Generating randomization protocol...")
+        
+        n_blocks = config.get('N_BLOCKS', 1)
+        n_trials_total = config.get('N_TRIALS', 20)  # This now includes any override
+        
+        # Calculate how many blocks we actually need
+        # If we have fewer trials than blocks, only generate trials for the blocks we need
+        blocks_to_generate = min(n_blocks, n_trials_total)
+        trials_per_block = max(1, n_trials_total // blocks_to_generate) if blocks_to_generate > 0 else 1
+        
+        if verbose:
+            print(f"[PROTOCOL] Generating protocol: {blocks_to_generate} blocks (of {n_blocks} configured), {n_trials_total} total trials, {trials_per_block} trials per block")
+        
+        # Generate trial sequences for blocks we need
+        # Each block gets unique seed but same timestamp ensures reproducibility
+        all_blocks_trials = []
+        for b in range(blocks_to_generate):
+            # For the last block, include any remainder trials
+            if b == blocks_to_generate - 1:
+                # Last block gets remaining trials
+                remaining_trials = n_trials_total - (trials_per_block * (blocks_to_generate - 1))
+                block_trial_count = max(remaining_trials, trials_per_block)
+            else:
+                block_trial_count = trials_per_block
+            
+            block_trials = create_stratified_block_sequence(
+                n_trials_per_block=block_trial_count,
+                concepts_a=config.get('CONCEPTS_CATEGORY_A', []),
+                concepts_b=config.get('CONCEPTS_CATEGORY_B', []),
+                block_num=b,
+                participant_id=participant_id,
+                timestamp=timestamp
+            )
+            all_blocks_trials.append(block_trials)
+        
+        # Pad remaining blocks with empty lists if needed
+        for b in range(blocks_to_generate, n_blocks):
+            all_blocks_trials.append([])
+        
+        # Save randomization protocol
+        randomization_data = {
+            'all_blocks_trials': all_blocks_trials,
+            'config': {
+                'N_TRIALS': n_trials_total,
+                'N_BLOCKS': n_blocks,
+                'TRIALS_PER_BLOCK': trials_per_block,
+                'CONCEPTS_CATEGORY_A': config.get('CONCEPTS_CATEGORY_A', []),
+                'CONCEPTS_CATEGORY_B': config.get('CONCEPTS_CATEGORY_B', [])
+            },
+            'metadata': {
+                'participant_id': participant_id,
+                'timestamp': timestamp
+            }
+        }
+        
+        protocol_path = save_randomization_protocol(
+            randomization_data=randomization_data,
+            subject_folder=subject_folder,
+            participant_id=participant_id
+        )
+        print(f"[PROTOCOL] Randomization protocol saved: {protocol_path}")
+        
+        # Block number is 0 (first block, will be saved as Block_0000)
+        block_num = 0
+        
+    else:
+        # Blocks exist - load protocol and determine next block number automatically
+        print(f"\n[BLOCK] Found {len(existing_blocks)} existing block(s)")
+        
+        # Load randomization protocol
+        protocol = load_randomization_protocol(
+            subject_folder=subject_folder,
+            participant_id=participant_id
+        )
+        
+        if protocol is None:
+            raise RuntimeError(
+                f"Found existing blocks but no randomization protocol found. "
+                f"Please delete block folders or ensure protocol exists."
+            )
+        
+        # Auto-detect: use next available block number
+        next_block_num = get_next_block_number(subject_folder)
+        block_num = next_block_num
+        
+        if verbose:
+            n_blocks = protocol['config']['N_BLOCKS']
+            print(f"[AUTO] Next block number: {block_num} (will be saved as Block_{block_num:04d})")
+            if block_num >= n_blocks:
+                print(f"[WARNING] Block {block_num} exceeds configured {n_blocks} blocks")
+                print(f"[INFO] All {n_blocks} blocks completed for this participant.")
+                return {}
+    
+    # Convert block_num to 1-indexed for trigger codes (block_num is 0-indexed for folders)
+    trigger_block_num = block_num + 1
+    
+    if verbose:
+        print(f"\n[BLOCK] Running block {block_num} (trigger block {trigger_block_num})")
+    
+    # Initialize trigger handler (test mode - no hardware) with CSV logging
+    # Save trigger CSV in subject folder (same organization as results)
+    csv_timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    csv_log_path = subject_folder / f"sub-{participant_id}_{csv_timestamp}_triggers.csv"
+    
+    trigger_handler = create_trigger_handler(
+        port_address=config.get('PARALLEL_PORT_ADDRESS', 0x0378),
+        use_triggers=True,  # Live mode - real triggers
+        csv_log_path=csv_log_path,  # Enable CSV mirror logging
+        biosemi_connection=biosemi_conn  # Pass Biosemi connection
+    )
+    if biosemi_conn:
+        print("\n[TRIGGER] Live mode enabled (triggers sent to Biosemi)")
+    else:
+        print("\n[TRIGGER] Fallback mode (triggers simulated, Biosemi not connected)")
+    print(f"[TRIGGER] CSV logging enabled: {csv_log_path}")
+    
+    # Create window (fullscreen for live experiments)
+    win = create_window(
+        size=config.get('WINDOW_SIZE', (1024, 768)),
+        color=config.get('BACKGROUND_COLOR', 'black'),
+        fullscreen=True  # Fullscreen for live experiments
+    )
+    print(f"[DISPLAY] Window created: {config.get('WINDOW_SIZE', (1024, 768))} (fullscreen)")
+    
+    # Create display manager
+    display_config = {
+        'fixation_height': config.get('FIXATION_HEIGHT', 0.1),
+        'text_height': config.get('TEXT_HEIGHT', 0.08),
+        'text_color': config.get('TEXT_COLOR', 'white'),
+        'bold_text': config.get('BOLD_TEXT', True),
+        'instruction_text': config.get('INSTRUCTION_TEXT', '')
+    }
+    display = DisplayManager(win, display_config)
+    
+    # Create clocks
+    clock = core.Clock()
+    experiment_clock = core.Clock()
+    
+    # Create audio stimulus using utility function
+    beep_sound = create_beep_sound(
+        frequency=config.get('BEEP_FREQUENCY', 440),
+        duration=config.get('BEEP_DURATION', 0.1),
+        fallback_note='A',
+        octave=4
+    )
+    if beep_sound is not None:
+        print(f"[AUDIO] Beep sound created: {config.get('BEEP_FREQUENCY', 440)} Hz")
+    else:
+        print("[WARNING] Could not create beep sound. Audio will be silent.")
+    
+    # Data storage
+    trial_data_list = []
+    metadata = create_metadata(participant_id, config)
+    
+    # Clear screen and show warning
+    display.clear_screen()
+    core.wait(0.1)  # Brief pause to ensure screen is cleared
+    print("\n[WARNING] Experiment starting soon...")
+    warning_text = "WARNING: Experiment starting soon.\n\nPlease remain still and focus.\n\nPress ESCAPE to exit."
+    display.show_text(warning_text, height=0.05, color='yellow')
+    core.wait(2.0)  # Show warning for 2 seconds
+    
+    # Countdown from 3
+    for count in [3, 2, 1]:
+        # Check for escape during countdown
+        keys = event.getKeys(keyList=['escape'])
+        if 'escape' in keys:
+            print("\n[EXIT] Experiment terminated by user")
+            if biosemi_conn:
+                close_biosemi_connection(biosemi_conn)
+            win.close()
+            core.quit()
+            return {}
+        
+        # Clear screen before showing countdown
+        display.clear_screen()
+        core.wait(0.1)  # Brief pause to ensure screen is cleared
+        display.show_text(f"Starting in {count}...", height=0.08, color='white')
+        core.wait(1.0)
+    
+    # Clear screen before experiment starts
+    display.clear_screen()
+    core.wait(0.1)
+    
+    # Get trial sequence for this block
+    if not existing_blocks:
+        # First block - use trials from protocol we just generated
+        trials = all_blocks_trials[block_num]
+        print(f"\n[SEQUENCE] Using trials from generated protocol (block {block_num})")
+    else:
+        # Subsequent blocks - load from protocol
+        if protocol is None:
+            protocol = load_randomization_protocol(
+                subject_folder=subject_folder,
+                participant_id=participant_id
+            )
+        trials = get_block_trials_from_protocol(protocol, block_num)
+        print(f"\n[SEQUENCE] Loaded trials from protocol (block {block_num})")
+    
+    # Validate sequence
+    is_valid, error_msg = validate_trial_sequence(
+        trials,
+        config.get('CONCEPTS_CATEGORY_A', []),
+        config.get('CONCEPTS_CATEGORY_B', [])
+    )
+    if not is_valid:
+        print(f"[WARNING] Sequence validation: {error_msg}")
+    else:
+        print(f"[OK] Trial sequence validated: {len(trials)} trials")
+    
+    # Start experiment
+    print("\n" + "="*80)
+    print(f"STARTING LIVE EXPERIMENT - BLOCK {block_num} (Block_{block_num:04d})")
+    print("="*80)
+    
+    experiment_clock.reset()
+    
+    # Trials are already for this block (from protocol)
+    block_trials = trials
+    n_trials_total = config.get('N_TRIALS', 20)  # Total across all blocks
+    
+    # Calculate global trial numbers (1-indexed across all blocks)
+    trials_per_block = len(block_trials)
+    global_trial_start = block_num * trials_per_block + 1
+    
+    print(f"\n[BLOCK {block_num}] Running {len(block_trials)} trials (global trials {global_trial_start}-{global_trial_start + len(block_trials) - 1})")
+    
+    # Block start (use 1-indexed for trigger codes)
+    block_start_code = get_block_start_code(trigger_block_num)
+    timestamp, _ = trigger_handler.send_trigger(
+        block_start_code,
+        event_name=f'block_{trigger_block_num}_start'
+    )
+    print(f"[TRIGGER] Block {trigger_block_num} start (trigger {block_start_code}) at {timestamp:.3f}s")
+    
+    # Run trials in this block
+    # Trial numbers are global (1-indexed across all blocks)
+    for trial_idx, trial_spec in enumerate(block_trials):
+        # Get global trial number (1-indexed)
+        global_trial_num = global_trial_start + trial_idx
+        
+        # Check for escape
+        keys = event.getKeys(keyList=['escape'])
+        if 'escape' in keys:
+            print("\n[EXIT] Experiment terminated by user (Escape key)")
+            break
+        
+        # Run trial
+        trial_data = run_single_trial_live(
+            win=win,
+            display=display,
+            trial_spec=trial_spec,
+            config=config,
+            trigger_handler=trigger_handler,
+            beep_sound=beep_sound,
+            trial_num=global_trial_num,
+            total_trials=n_trials_total
+        )
+        
+        trial_data_list.append(trial_data)
+        
+        # Inter-trial interval (jittered) - only if not last trial in block
+        if len(trial_data_list) < len(block_trials):
+            use_jitter = config.get('USE_JITTER', True)
+            jitter_range = config.get('JITTER_RANGE', 0.1)
+            inter_trial_interval = config.get('INTER_TRIAL_INTERVAL', 0.5)
+            wait_duration = jittered_wait(inter_trial_interval, jitter_range) if use_jitter else inter_trial_interval
+            core.wait(wait_duration)
+    
+    # Block end (use 1-indexed for trigger codes)
+    block_end_code = get_block_end_code(trigger_block_num)
+    timestamp, _ = trigger_handler.send_trigger(
+        block_end_code,
+        event_name=f'block_{trigger_block_num}_end'
+    )
+    print(f"[TRIGGER] Block {trigger_block_num} end (trigger {block_end_code}) at {timestamp:.3f}s")
+    
+    # Close trigger handler (saves CSV file)
+    trigger_handler.close()
+    
+    # Save data to block folder
+    print("\n[DATA] Saving trial data...")
+    block_folder = ensure_block_folder(subject_folder, block_num)
+    print(f"[BLOCK] Saving to: {block_folder}")
+    
+    saved_files = save_trial_data(
+        metadata=metadata,
+        trial_data=trial_data_list,
+        subject_folder=subject_folder,
+        participant_id=participant_id,
+        block_folder=block_folder
+    )
+    
+    total_duration = experiment_clock.getTime()
+    
+    # End screen (brief display, then auto-quit)
+    display.show_text(
+        "Experiment Complete!\n\nThank you for participating.",
+        height=0.06
+    )
+    core.wait(2.0)  # Show completion message for 2 seconds
+    
+    # Clean up Biosemi connection
+    if biosemi_conn:
+        close_biosemi_connection(biosemi_conn)
+        print("[BIOSEMI] Connection closed")
+    
+    # Print summary
+    print("\n" + "="*80)
+    print("EXPERIMENT SUMMARY")
+    print("="*80)
+    print_experiment_summary(
+        metadata=metadata,
+        trial_data=trial_data_list,
+        total_duration=total_duration,
+        saved_files=saved_files
+    )
+    
+    # Verification checklist
+    print("\n" + "="*80)
+    print("VERIFICATION CHECKLIST")
+    print("="*80)
+    print("[ ] All triggers logged correctly")
+    print("[ ] Display stimuli shown correctly")
+    print("[ ] Beeps played at correct intervals")
+    print("[ ] Data saved to files")
+    print("[ ] Timestamps recorded accurately")
+    print(f"\nCheck saved files:")
+    for file_type, file_path in saved_files.items():
+        print(f"  {file_type.upper()}: {file_path}")
+    print("="*80)
+    
+    # Cleanup
+    trigger_handler.close()
+    if biosemi_conn:
+        close_biosemi_connection(biosemi_conn)
+    win.close()
+    core.quit()
+    
+    return {
+        'participant_id': participant_id,
+        'subject_folder': str(subject_folder),
+        'block_num': block_num,
+        'trials_completed': len(trial_data_list),
+        'total_duration': total_duration,
+        'saved_files': saved_files,
+        'trial_data': trial_data_list
+    }
+
+
+if __name__ == "__main__":
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description='Run semantic visualization experiment with live Biosemi EEG capture',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Run live experiment with default settings (auto-detects next block)
+  python paradigm/semantic_paradigm_live.py --participant-id P001
+  
+  # Run with specific Biosemi port (auto-detects next block)
+  python paradigm/semantic_paradigm_live.py --participant-id P001 --biosemi-port COM4
+  
+  # Run fewer trials for quick test (auto-detects next block)
+  python paradigm/semantic_paradigm_live.py --participant-id P001 --n-trials 5
+  
+  # Verbose output (auto-detects next block)
+  python paradigm/semantic_paradigm_live.py --participant-id P001 --verbose
+        """
+    )
+    
+    parser.add_argument(
+        '--participant-id', '-p',
+        type=str,
+        required=True,
+        help='Participant identifier (required)'
+    )
+    
+    parser.add_argument(
+        '--biosemi-port',
+        type=str,
+        default='COM3',
+        help='Serial port for Biosemi (default: COM3)'
+    )
+    
+    parser.add_argument(
+        '--n-trials', '-n',
+        type=int,
+        default=None,
+        help='Number of trials to run (default: from config)'
+    )
+    
+    parser.add_argument(
+        '--n-beeps', '--beeps',
+        type=int,
+        default=None,
+        help='Number of beeps per trial (default: from config, max: 8). Useful for rapid testing (e.g., --n-beeps 3)'
+    )
+    
+    parser.add_argument(
+        '--verbose', '-v',
+        action='store_true',
+        help='Enable verbose output'
+    )
+    
+    args = parser.parse_args()
+    
+    try:
+        results = run_experiment_live(
+            participant_id=args.participant_id,
+            biosemi_port=args.biosemi_port,
+            config_path=None,  # Always use default config path
+            n_trials=args.n_trials,
+            n_beeps=args.n_beeps,
+            verbose=args.verbose
+        )
+        
+        if results:
+            print("\n[OK] Experiment completed successfully!")
+            print("\n[VERIFICATION] Check the following:")
+            print(f"  1. Data files: {results.get('saved_files', {})}")
+            print(f"  2. Trials completed: {results.get('trials_completed', 0)}")
+            print(f"  3. Total duration: {results.get('total_duration', 0):.2f}s")
+        else:
+            print("\n[WARNING] Experiment completed with warnings")
+            
+    except KeyboardInterrupt:
+        print("\n\n[WARNING] Experiment interrupted by user (Ctrl+C)")
+    except Exception as e:
+        print(f"\n[ERROR] Error during experiment: {e}")
+        import traceback
+        traceback.print_exc()

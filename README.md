@@ -33,8 +33,10 @@ repeater/
 │   │   ├── trigger_utils.py  # Trigger handling
 │   │   ├── display_utils.py  # Visual presentation
 │   │   ├── data_utils.py     # Data logging/saving
-│   │   └── randomization_utils.py  # Stimulus randomization
-│   └── semantic_paradigm.py  # Main experiment script
+│   │   ├── randomization_utils.py  # Stimulus randomization
+│   │   └── biosemi_utils.py  # Biosemi connection utilities
+│   ├── semantic_paradigm_live.py  # Live experiment (with Biosemi)
+│   └── semantic_paradigm_simulation.py  # Simulation variant (testing)
 │
 ├── config/                   # Configuration files
 │   ├── experiment_config.py  # Main experiment config
@@ -84,12 +86,34 @@ conda activate repeat
 
 ### 3. Run Experiment
 
+#### Live Mode (with Biosemi EEG capture):
 ```bash
-# From project root
-python paradigm/scripts/run_experiment.py --participant-id sub-001 --session 1
+# Run live experiment with Biosemi
+python paradigm/scripts/run_experiment.py --live --participant-id P001
 
-# Or with triggers
-python paradigm/scripts/run_experiment.py --participant-id sub-001 --triggers
+# Run with specific Biosemi port
+python paradigm/scripts/run_experiment.py --live --participant-id P001 --biosemi-port COM4
+
+# Or run directly
+python paradigm/semantic_paradigm_live.py --participant-id P001 --biosemi-port COM3
+```
+
+#### Simulation Mode (for testing without hardware):
+```bash
+# Run simulation
+python paradigm/scripts/run_experiment.py --simulation --participant-id sim_9999
+
+# Or run directly
+python paradigm/semantic_paradigm_simulation.py --participant-id sim_9999
+```
+
+#### Test Biosemi Connection:
+```bash
+# Test Biosemi connection
+python scripts/test_biosemi_connection.py --port COM3
+
+# Test trigger sending
+python scripts/test_biosemi_triggers.py --port COM3 --n-triggers 10
 ```
 
 ## Development Guidelines

@@ -218,6 +218,20 @@ BEEP_FREQUENCY = 440         # Hz (A4 note, or try 1000 for different tone)
 BEEP_DURATION = 0.1          # Duration of each beep (seconds)
 
 # =============================================================================
+# BIOSEMI CONFIGURATION
+# =============================================================================
+
+BIOSEMI_PORT = 'COM3'        # Serial port for Biosemi (Windows: COM3, COM4, etc.)
+BIOSEMI_BAUDRATE = 115200    # Serial port baudrate
+BIOSEMI_ENABLED = True       # Enable Biosemi connection (for live experiments)
+
+# =============================================================================
+# TRIGGER CONFIGURATION
+# =============================================================================
+
+PARALLEL_PORT_ADDRESS = 0x0378  # Parallel port address (default: LPT1)
+
+# =============================================================================
 # DATA COLLECTION
 # =============================================================================
 

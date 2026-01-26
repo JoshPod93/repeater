@@ -57,6 +57,13 @@ from .trigger_utils import (
     get_beep_codes
 )
 
+from .biosemi_utils import (
+    connect_biosemi,
+    verify_biosemi_connection,
+    send_biosemi_trigger,
+    close_biosemi_connection
+)
+
 __all__ = [
     # Block management utilities
     'get_subject_folder',
@@ -104,5 +111,10 @@ __all__ = [
     'play_beep',
     # Timing utilities
     'jittered_wait',
-    'get_jittered_duration'
+    'get_jittered_duration',
+    # Biosemi utilities
+    'connect_biosemi',
+    'verify_biosemi_connection',
+    'send_biosemi_trigger',
+    'close_biosemi_connection'
 ]

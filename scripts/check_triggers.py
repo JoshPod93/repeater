@@ -60,7 +60,7 @@ def check_trigger_mapping():
     # Check usage in codebase
     print("USAGE IN CODEBASE:")
     paradigm_files = [
-        Path(__file__).parent.parent / 'paradigm' / 'semantic_paradigm.py',
+        Path(__file__).parent.parent / 'paradigm' / 'semantic_paradigm_live.py',
         Path(__file__).parent.parent / 'paradigm' / 'semantic_paradigm_simulation.py'
     ]
     
