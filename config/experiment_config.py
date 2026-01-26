@@ -158,8 +158,8 @@ TRIAL_DURATION = (FIXATION_DURATION + PROMPT_DURATION + POST_CONCEPT_PAUSE +
 N_TRIALS = 60                # Total number of concept presentations (30 per category)
                               # Each presentation has N_BEEPS repetitions (8) = 480 total analysis trials
                               # Set to 40-60 for pilot testing, 100-200 for full experiment
-N_BLOCKS = 3                 # Number of blocks (with breaks between)
-TRIALS_PER_BLOCK = N_TRIALS // N_BLOCKS
+N_BLOCKS = 3                 # Number of blocks (each block launched individually)
+TRIALS_PER_BLOCK = N_TRIALS // N_BLOCKS  # Trials per block (20 for 60 trials / 3 blocks)
 
 # Randomization
 RANDOMIZE_CONCEPTS = True    # Randomly select concepts within categories
