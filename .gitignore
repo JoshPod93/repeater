@@ -67,3 +67,12 @@ files/
 
 # Keep structure but ignore contents
 !experiment_data/.gitkeep
+
+# Security - never commit tokens or credentials
+*.token
+*.key
+.env
+secrets.txt
+credentials.txt
+*_credentials.py
+*_token.txt
