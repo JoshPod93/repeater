@@ -341,7 +341,9 @@ def run_experiment_simulation(
         config=config
     )
     
-    # Show warning and countdown
+    # Clear screen and show warning
+    display.clear_screen()
+    core.wait(0.1)  # Brief pause to ensure screen is cleared
     print("\n[WARNING] Simulation starting soon...")
     warning_text = "WARNING: Simulation starting soon.\n\nPress ESCAPE to exit."
     display.show_text(warning_text, height=0.05, color='yellow')
@@ -357,8 +359,15 @@ def run_experiment_simulation(
             core.quit()
             return {}
         
+        # Clear screen before showing countdown
+        display.clear_screen()
+        core.wait(0.1)  # Brief pause to ensure screen is cleared
         display.show_text(f"Starting in {count}...", height=0.08, color='white')
         core.wait(1.0)
+    
+    # Clear screen before experiment starts
+    display.clear_screen()
+    core.wait(0.1)
     
     # Create trial sequence
     print("\n[SEQUENCE] Creating trial sequence...")

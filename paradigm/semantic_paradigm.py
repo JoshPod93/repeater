@@ -222,7 +222,9 @@ class SemanticVisualizationExperiment:
     
     def run_experiment(self):
         """Run the complete experiment."""
-        # Show warning and countdown
+        # Clear screen and show warning
+        self.display.clear_screen()
+        core.wait(0.1)  # Brief pause to ensure screen is cleared
         warning_text = "WARNING: Experiment starting soon.\n\nPlease remain still and focus.\n\nPress ESCAPE to exit."
         self.display.show_text(warning_text, height=0.05, color='yellow')
         core.wait(2.0)  # Show warning for 2 seconds
@@ -236,8 +238,15 @@ class SemanticVisualizationExperiment:
                 self.quit()
                 return
             
+            # Clear screen before showing countdown
+            self.display.clear_screen()
+            core.wait(0.1)  # Brief pause to ensure screen is cleared
             self.display.show_text(f"Starting in {count}...", height=0.08, color='white')
             core.wait(1.0)
+        
+        # Clear screen before experiment starts
+        self.display.clear_screen()
+        core.wait(0.1)
         
         # Create trial sequence
         trials = create_balanced_sequence(

@@ -266,6 +266,8 @@ class DisplayManager:
         """
         Display arbitrary text.
         
+        Clears any previous content and shows new text.
+        
         Parameters
         ----------
         text : str
@@ -275,6 +277,10 @@ class DisplayManager:
         color : str
             Text color
         """
+        # Clear screen first by flipping to blank
+        self.win.flip()
+        
+        # Create and show text
         temp_text = create_text_stimulus(
             self.win,
             text=text,
