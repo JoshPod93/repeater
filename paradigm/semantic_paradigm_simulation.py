@@ -42,11 +42,13 @@ def simulate_visualization_period(
     beep_sound: sound.Sound,
     trigger_handler: TriggerHandler,
     trial_num: int,
-    total_trials: int,
-    show_countdown: bool = True
+    total_trials: int
 ) -> List[float]:
     """
-    Simulate visualization period with beeps and optional countdown.
+    Simulate visualization period with beeps.
+    
+    Screen is cleared (black) during beeps - no text displayed.
+    Matches Alberto's original protocol.
     
     Parameters
     ----------
@@ -66,8 +68,6 @@ def simulate_visualization_period(
         Current trial number
     total_trials : int
         Total number of trials
-    show_countdown : bool
-        Whether to show countdown during visualization
     
     Returns
     -------
@@ -76,7 +76,7 @@ def simulate_visualization_period(
     """
     beep_timestamps = []
     
-    # Clear screen
+    # Clear screen (black background during beeps)
     display.clear_screen()
     
     # Send beep start trigger
@@ -86,14 +86,8 @@ def simulate_visualization_period(
     )
     beep_timestamps.append(timestamp)
     
-    # Visualization period with beeps
+    # Visualization period with beeps (screen stays clear/black)
     for beep_idx in range(n_beeps):
-        # Show countdown if requested
-        if show_countdown:
-            remaining = n_beeps - beep_idx
-            countdown_text = f'Visualizing... {remaining}'
-            display.show_text(countdown_text, height=0.05, color='gray')
-        
         # Send beep trigger
         timestamp, _ = trigger_handler.send_trigger(
             TRIGGER_CODES['beep'],
@@ -203,8 +197,7 @@ def run_single_trial_simulation(
         beep_sound=beep_sound,
         trigger_handler=trigger_handler,
         trial_num=trial_num,
-        total_trials=total_trials,
-        show_countdown=True
+        total_trials=total_trials
     )
     
     trial_data['timestamps']['beep_start'] = beep_timestamps[0]
