@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Launch semantic_paradigm_simulation.py for multiple blocks
-# Each execution runs ONE block only (similar to grasp/paradigm pattern)
+# Each execution runs ONE block only
 #
 # To run this script from the paradigm folder in Git Bash:
 #
