@@ -173,8 +173,10 @@ class SemanticVisualizationExperiment:
         
         core.wait(pause_duration)
         
-        # 3. RHYTHMIC BEEP SEQUENCE
-        self.display.clear_screen()
+        # Show fixation cross (stays on during beeps)
+        self.display.show_fixation()
+        
+        # 3. RHYTHMIC BEEP SEQUENCE (fixation stays on screen)
         timestamp, _ = self.trigger_handler.send_trigger(
             TRIGGER_CODES['beep_start'],
             event_name='beep_start'
@@ -186,6 +188,9 @@ class SemanticVisualizationExperiment:
         beep_interval = self.config.get('BEEP_INTERVAL', 0.8)  # NO JITTER - critical rhythmic timing
         
         for beep_idx in range(n_beeps):
+            # Redraw fixation (keeps it visible during beeps)
+            self.display.show_fixation()
+            
             timestamp, _ = self.trigger_handler.send_trigger(
                 TRIGGER_CODES['beep'],
                 event_name=f'beep_{beep_idx + 1}_{n_beeps}'

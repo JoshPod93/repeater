@@ -47,8 +47,7 @@ def simulate_visualization_period(
     """
     Simulate visualization period with beeps.
     
-    Screen is cleared (black) during beeps - no text displayed.
-    Matches Alberto's original protocol.
+    Fixation cross stays on screen during beeps.
     
     Parameters
     ----------
@@ -76,9 +75,6 @@ def simulate_visualization_period(
     """
     beep_timestamps = []
     
-    # Clear screen (black background during beeps)
-    display.clear_screen()
-    
     # Send beep start trigger
     timestamp, _ = trigger_handler.send_trigger(
         TRIGGER_CODES['beep_start'],
@@ -86,8 +82,11 @@ def simulate_visualization_period(
     )
     beep_timestamps.append(timestamp)
     
-    # Visualization period with beeps (screen stays clear/black)
+    # Visualization period with beeps (fixation stays on screen)
     for beep_idx in range(n_beeps):
+        # Redraw fixation (keeps it visible during beeps)
+        display.show_fixation()
+        
         # Send beep trigger
         timestamp, _ = trigger_handler.send_trigger(
             TRIGGER_CODES['beep'],
@@ -185,7 +184,10 @@ def run_single_trial_simulation(
     post_concept_pause = config.get('POST_CONCEPT_PAUSE', 1.0)
     core.wait(jittered_wait(post_concept_pause, jitter_range) if use_jitter else post_concept_pause)
     
-    # 3. SIMULATED VISUALIZATION PERIOD
+    # Show fixation cross (stays on during beeps)
+    display.show_fixation()
+    
+    # 3. SIMULATED VISUALIZATION PERIOD (fixation stays on screen)
     n_beeps = config.get('N_BEEPS', 8)
     beep_interval = config.get('BEEP_INTERVAL', 0.8)
     
