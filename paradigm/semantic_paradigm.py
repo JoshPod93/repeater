@@ -255,9 +255,8 @@ class SemanticVisualizationExperiment:
             # Play beep using utility function
             play_beep(self.beep, stop_first=True)
             
-            # Jittered beep interval
-            wait_duration = jittered_wait(beep_interval_base, jitter_range) if use_jitter else beep_interval_base
-            core.wait(wait_duration)
+            # Fixed interval - NO JITTER (critical for rhythmic protocol)
+            core.wait(beep_interval)
         
         # Rest (jittered)
         self.display.clear_screen()
