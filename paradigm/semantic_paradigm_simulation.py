@@ -43,9 +43,7 @@ def simulate_visualization_period(
     trigger_handler: TriggerHandler,
     trial_num: int,
     total_trials: int,
-    show_countdown: bool = True,
-    use_jitter: bool = True,
-    jitter_range: float = 0.1
+    show_countdown: bool = True
 ) -> List[float]:
     """
     Simulate visualization period with beeps and optional countdown.
@@ -108,9 +106,8 @@ def simulate_visualization_period(
         
         print(f"  [SIM] Beep {beep_idx + 1}/{n_beeps} at {timestamp:.3f}s")
         
-        # Jittered beep interval
-        wait_duration = jittered_wait(beep_interval, jitter_range) if use_jitter else beep_interval
-        core.wait(wait_duration)
+        # Fixed interval - NO JITTER (critical for rhythmic protocol)
+        core.wait(beep_interval)
     
     return beep_timestamps
 
@@ -162,7 +159,7 @@ def run_single_trial_simulation(
     
     print(f"\n[SIM] Trial {trial_num}/{total_trials}: {concept} (Category {category})")
     
-    # 1. FIXATION (jittered)
+    # 1. FIXATION (NO JITTER - important timing)
     display.show_fixation()
     timestamp, _ = trigger_handler.send_trigger(
         TRIGGER_CODES['fixation'],
@@ -170,11 +167,7 @@ def run_single_trial_simulation(
     )
     trial_data['timestamps']['fixation'] = timestamp
     print(f"  [SIM] Fixation at {timestamp:.3f}s")
-    
-    use_jitter = config.get('USE_JITTER', True)
-    jitter_range = config.get('JITTER_RANGE', 0.1)
-    fixation_duration = config.get('FIXATION_DURATION', 2.0)
-    core.wait(jittered_wait(fixation_duration, jitter_range) if use_jitter else fixation_duration)
+    core.wait(config.get('FIXATION_DURATION', 2.0))
     
     # 2. CONCEPT PRESENTATION
     progress_text = f"Trial {trial_num}/{total_trials}"
@@ -188,14 +181,13 @@ def run_single_trial_simulation(
     trial_data['timestamps']['concept'] = timestamp
     print(f"  [SIM] Concept '{concept}' (Category {category}) at {timestamp:.3f}s")
     
-    # Jittered prompt duration
+    # NO JITTER - important timing for concept presentation
+    core.wait(config.get('PROMPT_DURATION', 2.0))
+    
+    # Clear concept and pause before beeps (JITTERED - pause event)
+    display.clear_screen()
     use_jitter = config.get('USE_JITTER', True)
     jitter_range = config.get('JITTER_RANGE', 0.1)
-    prompt_duration = config.get('PROMPT_DURATION', 2.0)
-    core.wait(jittered_wait(prompt_duration, jitter_range) if use_jitter else prompt_duration)
-    
-    # Clear concept and pause before beeps (1 second pause after concept disappears)
-    display.clear_screen()
     post_concept_pause = config.get('POST_CONCEPT_PAUSE', 1.0)
     core.wait(jittered_wait(post_concept_pause, jitter_range) if use_jitter else post_concept_pause)
     
@@ -227,6 +219,7 @@ def run_single_trial_simulation(
     trial_data['timestamps']['rest'] = timestamp
     print(f"  [SIM] Trial end at {timestamp:.3f}s")
     
+    # Rest (JITTERED - pause event)
     use_jitter = config.get('USE_JITTER', True)
     jitter_range = config.get('JITTER_RANGE', 0.1)
     rest_duration = config.get('REST_DURATION', 1.0)

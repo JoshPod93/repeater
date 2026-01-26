@@ -136,25 +136,14 @@ class SemanticVisualizationExperiment:
         
         print(f"\nTrial {trial_num}/{self.config.get('N_TRIALS', 20)}: {concept} (Category {category})")
         
-        # 1. FIXATION
+        # 1. FIXATION (NO JITTER - important timing)
         self.display.show_fixation()
         timestamp, _ = self.trigger_handler.send_trigger(
             TRIGGER_CODES['fixation'],
             event_name='fixation'
         )
         trial_data['timestamps']['fixation'] = timestamp
-        
-        # Jittered fixation duration
-        use_jitter = self.config.get('USE_JITTER', True)
-        jitter_range = self.config.get('JITTER_RANGE', 0.1)
-        fixation_duration = self.config.get('FIXATION_DURATION', 2.0)
-        
-        if use_jitter:
-            wait_duration = jittered_wait(fixation_duration, jitter_range)
-        else:
-            wait_duration = fixation_duration
-        
-        core.wait(wait_duration)
+        core.wait(self.config.get('FIXATION_DURATION', 2.0))
         
         # 2. CONCEPT PRESENTATION
         progress_text = f"Trial {trial_num}/{self.config.get('N_TRIALS', 20)}"
@@ -194,9 +183,7 @@ class SemanticVisualizationExperiment:
         trial_data['timestamps']['beeps'] = []
         
         n_beeps = self.config.get('N_BEEPS', 8)
-        beep_interval_base = self.config.get('BEEP_INTERVAL', 0.8)
-        use_jitter = self.config.get('USE_JITTER', True)
-        jitter_range = self.config.get('JITTER_RANGE', 0.1)
+        beep_interval = self.config.get('BEEP_INTERVAL', 0.8)  # NO JITTER - critical rhythmic timing
         
         for beep_idx in range(n_beeps):
             timestamp, _ = self.trigger_handler.send_trigger(
@@ -209,14 +196,7 @@ class SemanticVisualizationExperiment:
             play_beep(self.beep, stop_first=True)
             
             print(f"  Beep {beep_idx + 1}/{n_beeps} at {timestamp:.3f}s")
-            
-            # Jittered beep interval
-            if use_jitter:
-                wait_duration = jittered_wait(beep_interval_base, jitter_range)
-            else:
-                wait_duration = beep_interval_base
-            
-            core.wait(wait_duration)
+            core.wait(beep_interval)  # Fixed interval - critical for rhythmic protocol
         
         # 4. REST PERIOD
         self.display.clear_screen()
@@ -264,9 +244,9 @@ class SemanticVisualizationExperiment:
         post_concept_pause = self.config.get('POST_CONCEPT_PAUSE', 1.0)
         core.wait(jittered_wait(post_concept_pause, jitter_range) if use_jitter else post_concept_pause)
         
-        # Beeps with countdown (jittered intervals)
+        # Beeps with countdown (NO JITTER - critical rhythmic timing)
         n_beeps = self.config.get('N_BEEPS', 8)
-        beep_interval_base = self.config.get('BEEP_INTERVAL', 0.8)
+        beep_interval = self.config.get('BEEP_INTERVAL', 0.8)  # Fixed - critical for rhythm
         
         for beep_idx in range(n_beeps):
             countdown = f'Visualizing... {n_beeps - beep_idx}'

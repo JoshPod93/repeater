@@ -132,9 +132,10 @@ INTER_TRIAL_INTERVAL = 0.5   # Break between trials (prevents fatigue)
 # =============================================================================
 
 # Jitter range as fraction (0.1 = ±10%, 0.15 = ±15%, etc.)
-# All timing parameters will be jittered by this amount
-# Example: 1.0s base duration with 0.1 jitter = 0.9-1.1s actual duration
-USE_JITTER = True            # Enable/disable jittering
+# Jittering is ONLY applied to pause events (post-concept pause, rest, inter-trial)
+# CRITICAL: NO jittering on fixation, concept presentation, or beep intervals
+# (these are important/sensitive timing parameters for the rhythmic protocol)
+USE_JITTER = True            # Enable/disable jittering for pause events only
 JITTER_RANGE = 0.1           # ±10% jitter by default
 
 # Calculate total trial duration

@@ -1,0 +1,6 @@
+timestamp_psychopy,timestamp_absolute,trigger_code,event_name,sent_to_eeg
+5.956178,2026-01-26 14:35:56.316,50,block_start,no
+5.976238,2026-01-26 14:35:56.336,1,fixation,no
+7.994738,2026-01-26 14:35:58.354,10,concept_wrist_category_A,no
+10.945811,2026-01-26 14:36:01.305,30,beep_start,no
+10.966012,2026-01-26 14:36:01.325,31,beep_1_8,no
