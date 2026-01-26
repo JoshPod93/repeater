@@ -1,3 +1,26 @@
+"""
+Tangent Space Logistic Regression Classifier for Speech Imagery BCI
+
+AUTHOR: Alberto Tates
+BCI-NE Lab, University of Essex
+
+This script implements the tangent space projection + logistic regression pipeline
+described in the email correspondence and used in the paradigm paper analysis.
+
+From email (Alberto Tates):
+"I filtered the signal into 20 bands, converted the trials to cov matrices,
+projected them with the TS function, concatenated everything, and let the logistic
+regressor weight the features."
+
+This code is provided as-is from Alberto Tates' implementation.
+No modifications have been made by Dr. Joshua Podmore.
+
+Reference:
+- Tates, A., Halder, S., & Daly, I. (2025). "Consolidating the Speech Imagery Paradigm:
+  Evidence that Rhythmic Protocols Drive Superior Decoding Accuracy." IEEE TNSRE.
+- Email correspondence: docs/emails.txt
+"""
+
 import os
 import argparse
 
@@ -12,8 +35,6 @@ from pyriemann.tangentspace import TangentSpace
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold
-
-parser = argparse.ArgumentParser()
 parser.add_argument('-c', '--classes', nargs='+')
 args = parser.parse_args()
 
