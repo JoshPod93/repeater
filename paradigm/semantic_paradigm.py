@@ -227,19 +227,17 @@ class SemanticVisualizationExperiment:
         
         # Show practice label
         self.display.show_text('PRACTICE TRIAL', height=0.05, color='yellow')
-        core.wait(jittered_wait(0.5, jitter_range) if use_jitter else 0.5)
+        core.wait(0.5)
         
-        # Fixation (jittered)
+        # Fixation (NO JITTER - important timing)
         self.display.show_fixation()
-        fixation_duration = self.config.get('FIXATION_DURATION', 2.0)
-        core.wait(jittered_wait(fixation_duration, jitter_range) if use_jitter else fixation_duration)
+        core.wait(self.config.get('FIXATION_DURATION', 2.0))
         
-        # Concept (jittered)
+        # Concept (NO JITTER - important timing)
         self.display.show_concept(concept)
-        prompt_duration = self.config.get('PROMPT_DURATION', 2.0)
-        core.wait(jittered_wait(prompt_duration, jitter_range) if use_jitter else prompt_duration)
+        core.wait(self.config.get('PROMPT_DURATION', 2.0))
         
-        # Clear concept and pause before beeps
+        # Clear concept and pause before beeps (JITTERED - pause event)
         self.display.clear_screen()
         post_concept_pause = self.config.get('POST_CONCEPT_PAUSE', 1.0)
         core.wait(jittered_wait(post_concept_pause, jitter_range) if use_jitter else post_concept_pause)
@@ -258,7 +256,7 @@ class SemanticVisualizationExperiment:
             # Fixed interval - NO JITTER (critical for rhythmic protocol)
             core.wait(beep_interval)
         
-        # Rest (jittered)
+        # Rest (JITTERED - pause event)
         self.display.clear_screen()
         rest_duration = self.config.get('REST_DURATION', 1.0)
         core.wait(jittered_wait(rest_duration, jitter_range) if use_jitter else rest_duration)
