@@ -31,8 +31,6 @@ Examples:
   # Run with triggers enabled
   python paradigm/scripts/run_experiment.py --participant-id sub-001 --triggers
   
-  # Run without practice trials
-  python paradigm/scripts/run_experiment.py --participant-id sub-001 --no-practice
         """
     )
     
@@ -54,19 +52,6 @@ Examples:
         '--triggers', '-t',
         action='store_true',
         help='Enable EEG triggers (default: False)'
-    )
-    
-    parser.add_argument(
-        '--no-practice',
-        action='store_true',
-        help='Skip practice trials'
-    )
-    
-    parser.add_argument(
-        '--practice-trials',
-        type=int,
-        default=2,
-        help='Number of practice trials (default: 2)'
     )
     
     parser.add_argument(
@@ -112,8 +97,7 @@ Examples:
     )
     
     try:
-        n_practice = 0 if args.no_practice else args.practice_trials
-        exp.run_experiment(n_practice_trials=n_practice)
+        exp.run_experiment()
     except KeyboardInterrupt:
         print("\n\nExperiment interrupted by user.")
     except Exception as e:

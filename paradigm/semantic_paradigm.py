@@ -220,48 +220,7 @@ class SemanticVisualizationExperiment:
         
         return trial_data
     
-    def run_practice_trial(self, concept: str = 'practice', category: str = 'A'):
-        """Run a practice trial with visual feedback."""
-        use_jitter = self.config.get('USE_JITTER', True)
-        jitter_range = self.config.get('JITTER_RANGE', 0.1)
-        
-        # Show practice label
-        self.display.show_text('PRACTICE TRIAL', height=0.05, color='yellow')
-        core.wait(0.5)
-        
-        # Fixation (NO JITTER - important timing)
-        self.display.show_fixation()
-        core.wait(self.config.get('FIXATION_DURATION', 2.0))
-        
-        # Concept (NO JITTER - important timing)
-        self.display.show_concept(concept)
-        core.wait(self.config.get('PROMPT_DURATION', 2.0))
-        
-        # Clear concept and pause before beeps (JITTERED - pause event)
-        self.display.clear_screen()
-        post_concept_pause = self.config.get('POST_CONCEPT_PAUSE', 1.0)
-        core.wait(jittered_wait(post_concept_pause, jitter_range) if use_jitter else post_concept_pause)
-        
-        # Beeps with countdown (NO JITTER - critical rhythmic timing)
-        n_beeps = self.config.get('N_BEEPS', 8)
-        beep_interval = self.config.get('BEEP_INTERVAL', 0.8)  # Fixed - critical for rhythm
-        
-        for beep_idx in range(n_beeps):
-            countdown = f'Visualizing... {n_beeps - beep_idx}'
-            self.display.show_text(countdown, height=0.05, color='gray')
-            
-            # Play beep using utility function
-            play_beep(self.beep, stop_first=True)
-            
-            # Fixed interval - NO JITTER (critical for rhythmic protocol)
-            core.wait(beep_interval)
-        
-        # Rest (JITTERED - pause event)
-        self.display.clear_screen()
-        rest_duration = self.config.get('REST_DURATION', 1.0)
-        core.wait(jittered_wait(rest_duration, jitter_range) if use_jitter else rest_duration)
-    
-    def run_experiment(self, n_practice_trials: int = 2):
+    def run_experiment(self):
         """Run the complete experiment."""
         # Show warning and countdown
         warning_text = "WARNING: Experiment starting soon.\n\nPlease remain still and focus.\n\nPress ESCAPE to exit."
@@ -279,30 +238,6 @@ class SemanticVisualizationExperiment:
             
             self.display.show_text(f"Starting in {count}...", height=0.08, color='white')
             core.wait(1.0)
-        
-        # Practice trials
-        if n_practice_trials > 0:
-            concepts_a = self.config.get('CONCEPTS_CATEGORY_A', [])
-            concepts_b = self.config.get('CONCEPTS_CATEGORY_B', [])
-            
-            for i in range(n_practice_trials):
-                # Check for escape
-                keys = event.getKeys(keyList=['escape'])
-                if 'escape' in keys:
-                    print("\n[EXIT] Experiment terminated by user (Escape key)")
-                    self.quit()
-                    return
-                
-                concept = concepts_a[0] if i % 2 == 0 else concepts_b[0]
-                category = 'A' if i % 2 == 0 else 'B'
-                self.run_practice_trial(concept, category)
-                
-                if i < n_practice_trials - 1:
-                    # Jittered wait
-                    use_jitter = self.config.get('USE_JITTER', True)
-                    jitter_range = self.config.get('JITTER_RANGE', 0.1)
-                    wait_duration = jittered_wait(1.0, jitter_range) if use_jitter else 1.0
-                    core.wait(wait_duration)
         
         # Create trial sequence
         trials = create_balanced_sequence(
@@ -425,7 +360,7 @@ if __name__ == "__main__":
     )
     
     try:
-        exp.run_experiment(n_practice_trials=2)
+        exp.run_experiment()
     except Exception as e:
         print(f"\nError during experiment: {e}")
         import traceback

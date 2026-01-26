@@ -21,8 +21,6 @@ python paradigm/scripts/run_experiment.py --participant-id sub-001 --session 1
 # With triggers
 python paradigm/scripts/run_experiment.py --participant-id sub-001 --triggers
 
-# Skip practice trials
-python paradigm/scripts/run_experiment.py --participant-id sub-001 --no-practice
 ```
 
 ## Importing
