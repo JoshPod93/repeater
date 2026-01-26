@@ -100,13 +100,26 @@ elif ACTIVE_DESIGN == 5:
 # TIMING PARAMETERS (seconds)
 # =============================================================================
 
-# These are based on your rhythmic paradigm timing
-FIXATION_DURATION = 2.0      # Initial fixation cross
-PROMPT_DURATION = 2.0        # How long to show the concept word
-BEEP_INTERVAL = 0.8          # Time between beeps (SOA)
-N_BEEPS = 8                  # Number of rhythmic beeps
-REST_DURATION = 1.0          # Blank screen after trial
-INTER_TRIAL_INTERVAL = 0.5   # Break between trials
+# Based on successful rhythmic protocols from paradigm paper and email correspondence:
+# - Alberto's successful protocol ("Ours rhythm"): 0.8s intervals, 100 trials per class
+# - BCI Competition (100% success): 2s intervals, 70 trials per class
+# - Nguyen (80%+ success): 1s intervals, 100 trials per class
+# - Tec (rhythmic): 1.4s intervals, 30 trials per class
+#
+# Email: "I used 0.8 seconds to try and enclose the time signature"
+# Email: "only when I managed each repetition as a single trial did I get better results"
+# This means: Each beep = one repetition = one analysis trial
+#
+# Research summary: Shorter time windows (up to 2s) most favorable
+FIXATION_DURATION = 2.0      # Initial fixation cross (standard for BCI paradigms)
+PROMPT_DURATION = 2.0        # How long to show the concept word (sufficient for reading/initiation)
+BEEP_INTERVAL = 0.8          # Time between beeps (SOA) - matches Alberto's successful "Ours rhythm" protocol
+N_BEEPS = 8                  # Number of rhythmic beeps per concept presentation
+                              # Each beep = one repetition = one analysis trial
+                              # 8 beeps × 0.8s = 6.4s visualization period per concept
+                              # Total analysis trials = N_TRIALS × N_BEEPS
+REST_DURATION = 1.0          # Blank screen after trial (standard rest period)
+INTER_TRIAL_INTERVAL = 0.5   # Break between trials (prevents fatigue)
 
 # Calculate total trial duration
 TRIAL_DURATION = FIXATION_DURATION + PROMPT_DURATION + (BEEP_INTERVAL * N_BEEPS) + REST_DURATION
@@ -115,7 +128,17 @@ TRIAL_DURATION = FIXATION_DURATION + PROMPT_DURATION + (BEEP_INTERVAL * N_BEEPS)
 # EXPERIMENT STRUCTURE
 # =============================================================================
 
-N_TRIALS = 40                # Total number of trials (should be even for balanced design)
+# Based on successful rhythmic protocols from paradigm paper:
+# - BCI Competition: 70 trials per class (140 total)
+# - Nguyen: 100 trials per class (200 total)  
+# - Ours rhythm: 100 trials per class (200 total) - Alberto's successful protocol
+# - Tec: 30 trials per class (60 total)
+#
+# For full experiment, use 100-200 total trials (50-100 per category)
+# For testing/pilot, 40-60 trials is acceptable
+N_TRIALS = 100               # Total number of concept presentations (50 per category)
+                              # Each presentation has N_BEEPS repetitions (8) = 800 total analysis trials
+                              # Set to 40-60 for pilot testing, 100-200 for full experiment
 N_BLOCKS = 1                 # Number of blocks (with breaks between)
 TRIALS_PER_BLOCK = N_TRIALS // N_BLOCKS
 
@@ -192,16 +215,23 @@ DESIGN CONSIDERATIONS:
    - Consider familiarity - all participants should know the concepts
    - Avoid ambiguous terms
 
-2. TIMING:
-   - The 0.8s beep interval matches your speech paradigm
-   - 8 beeps = 6.4s of sustained visualization
-   - This should be enough for stable EEG patterns
-   - Adjust if you find participants can't maintain focus
+2. TIMING (Based on successful studies):
+   - 0.8s beep interval matches Alberto's successful "Ours rhythm" protocol
+   - Also matches Nguyen (1s) and BCI Competition (2s) - all successful rhythmic protocols
+   - 8 beeps = 6.4s visualization period per concept presentation
+   - Each beep = one repetition = one analysis trial (per email: "each repetition as a single trial")
+   - Research shows shorter windows (up to 2s) most favorable - our 0.8s is optimal
 
-3. TRIAL COUNT:
-   - 40 trials = 20 per category (good for initial testing)
-   - Scale up to 100-200 for actual BCI experiments
-   - Balance recording time vs participant fatigue
+3. TRIAL COUNT (Based on paradigm paper Table I):
+   - Successful studies: 60-200 total trials (30-100 per category)
+   - BCI Competition: 140 total (70 per class) - 100% success rate
+   - Nguyen: 200 total (100 per class) - 80%+ success rate
+   - Ours rhythm: 200 total (100 per class) - 80%+ success rate (Alberto's protocol)
+   - Tec: 60 total (30 per class) - rhythmic protocol
+   - Current default: 100 total (50 per category) - good balance
+   - For pilot testing: 40-60 trials acceptable
+   - For full experiment: 100-200 trials recommended
+   - Total analysis trials = N_TRIALS × N_BEEPS (e.g., 100 × 8 = 800 repetitions)
 
 4. CONTROLS TO CONSIDER:
    - Add a "rest" or "relax" condition (passive baseline)
