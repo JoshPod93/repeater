@@ -419,53 +419,81 @@ def run_experiment_simulation(
     
     experiment_clock.reset()
     
-    # Send block start trigger (unique code for block number)
-    block_num = 1  # Currently single block, but supports multiple
-    block_start_code = get_block_start_code(block_num)
-    timestamp, _ = trigger_handler.send_trigger(
-        block_start_code,
-        event_name=f'block_{block_num}_start'
-    )
-    print(f"[TRIGGER] Block {block_num} start (trigger {block_start_code}) at {timestamp:.3f}s")
+    # Get block configuration
+    n_blocks = config.get('N_BLOCKS', 1)
+    n_trials_total = len(trials)
+    trials_per_block = n_trials_total // n_blocks
     
-    # Run all trials
-    for trial_idx, trial_spec in enumerate(trials, 1):
-        # Check for escape
-        keys = event.getKeys(keyList=['escape'])
-        if 'escape' in keys:
-            print("\n[EXIT] Simulation terminated by user (Escape key)")
-            break
-        
-        # Run trial
-        trial_data = run_single_trial_simulation(
-            win=win,
-            display=display,
-            trial_spec=trial_spec,
-            config=config,
-            trigger_handler=trigger_handler,
-            beep_sound=beep_sound,
-            trial_num=trial_idx,
-            total_trials=len(trials)
+    print(f"\n[CONFIG] Blocks: {n_blocks}, Trials per block: {trials_per_block}, Total trials: {n_trials_total}")
+    
+    # Run blocks
+    trial_counter = 0
+    for block_num in range(1, n_blocks + 1):
+        # Block start
+        block_start_code = get_block_start_code(block_num)
+        timestamp, _ = trigger_handler.send_trigger(
+            block_start_code,
+            event_name=f'block_{block_num}_start'
         )
+        print(f"\n[TRIGGER] Block {block_num} start (trigger {block_start_code}) at {timestamp:.3f}s")
         
-        trial_data_list.append(trial_data)
+        # Calculate trials for this block
+        block_start_idx = (block_num - 1) * trials_per_block
+        block_end_idx = block_start_idx + trials_per_block
+        block_trials = trials[block_start_idx:block_end_idx]
         
-        # Inter-trial interval (jittered)
-        if trial_idx < len(trials):
-            use_jitter = config.get('USE_JITTER', True)
-            jitter_range = config.get('JITTER_RANGE', 0.1)
-            inter_trial_interval = config.get('INTER_TRIAL_INTERVAL', 0.5)
-            wait_duration = jittered_wait(inter_trial_interval, jitter_range) if use_jitter else inter_trial_interval
-            core.wait(wait_duration)
-    
-    # Block end
-    block_num = 1  # Currently single block, but supports multiple
-    block_end_code = get_block_end_code(block_num)
-    timestamp, _ = trigger_handler.send_trigger(
-        block_end_code,
-        event_name=f'block_{block_num}_end'
-    )
-    print(f"\n[TRIGGER] Block {block_num} end (trigger {block_end_code}) at {timestamp:.3f}s")
+        print(f"[BLOCK {block_num}] Running trials {block_start_idx + 1}-{block_end_idx} ({len(block_trials)} trials)")
+        
+        # Run trials in this block
+        for trial_spec in block_trials:
+            trial_counter += 1
+            
+            # Check for escape
+            keys = event.getKeys(keyList=['escape'])
+            if 'escape' in keys:
+                print("\n[EXIT] Simulation terminated by user (Escape key)")
+                break
+            
+            # Run trial
+            trial_data = run_single_trial_simulation(
+                win=win,
+                display=display,
+                trial_spec=trial_spec,
+                config=config,
+                trigger_handler=trigger_handler,
+                beep_sound=beep_sound,
+                trial_num=trial_counter,
+                total_trials=n_trials_total
+            )
+            
+            trial_data_list.append(trial_data)
+            
+            # Inter-trial interval (jittered)
+            if trial_counter < n_trials_total:
+                use_jitter = config.get('USE_JITTER', True)
+                jitter_range = config.get('JITTER_RANGE', 0.1)
+                inter_trial_interval = config.get('INTER_TRIAL_INTERVAL', 0.5)
+                wait_duration = jittered_wait(inter_trial_interval, jitter_range) if use_jitter else inter_trial_interval
+                core.wait(wait_duration)
+        
+        # Block end
+        block_end_code = get_block_end_code(block_num)
+        timestamp, _ = trigger_handler.send_trigger(
+            block_end_code,
+            event_name=f'block_{block_num}_end'
+        )
+        print(f"[TRIGGER] Block {block_num} end (trigger {block_end_code}) at {timestamp:.3f}s")
+        
+        # Block break (except after last block)
+        if block_num < n_blocks:
+            print(f"\n[BLOCK BREAK] Rest before block {block_num + 1}...")
+            display.show_text(
+                f"Block {block_num} complete.\n\nTake a short break.\n\nBlock {block_num + 1} starting soon...",
+                height=0.05,
+                color='yellow'
+            )
+            core.wait(5.0)  # 5 second break between blocks
+            display.clear_screen()
     
     # Close trigger handler (saves CSV file)
     trigger_handler.close()
