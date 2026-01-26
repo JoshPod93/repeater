@@ -35,6 +35,8 @@ from pyriemann.tangentspace import TangentSpace
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold
+
+parser = argparse.ArgumentParser()
 parser.add_argument('-c', '--classes', nargs='+')
 args = parser.parse_args()
 
