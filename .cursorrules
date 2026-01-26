@@ -1,0 +1,70 @@
+# Cursor Rules for Repeater Project
+# Rhythmic Semantic Visualization Paradigm
+# BCI-NE Lab, University of Essex
+
+## Environment Management
+- Always use dedicated conda environment: "repeat"
+- If conda env "repeat" doesn't exist, create it before running any Python code
+- Activate conda environment before executing scripts: `conda activate repeat`
+- Never run code outside the conda environment
+
+## Version Control
+- Use git for all commits and backups
+- Commit frequently with descriptive messages
+- Maintain clean git history
+- Use .gitignore appropriately for data files and temporary outputs
+
+## Script Execution
+- Use CLI commands for consistent script launching
+- Never hardcode paths - use dynamic pathing with pathlib or os.path
+- All scripts should be executable from command line with proper argument parsing
+
+## Code Quality Standards
+- Only implement changes that follow best practices
+- For novel work, conduct research first to make well-informed decisions
+- Keep codebase clean and intelligible
+- Remove repeated, redundant, inefficient, legacy, and clutter code while retaining functionality
+- Prefer many small functions/classes over large cumbersome functions
+- Make code modular, open, and easily modifiable/portable
+
+## Project Structure
+- Silo specific aspects in dedicated folders with:
+  - Dedicated scripts for operations/launching
+  - Function banks for reusable code
+- Keep experiment code separate from analysis code
+- Maintain clear separation of concerns
+
+## Character Encoding
+- Zero emojis or special characters in codebase
+- Use ASCII-compatible characters only
+- Avoid Unicode characters that could cause mapping errors
+
+## Configuration Management
+- Use dedicated config file (experiment_config.py) for all paradigm parameters:
+  - Fixation cross duration
+  - Window background color
+  - Timing parameters
+  - Concept lists
+  - Visual/audio parameters
+- Never hardcode experimental parameters in main scripts
+- Make configuration easily adaptable without touching core code
+
+## Project-Specific Guidelines
+- This is a BCI experiment adaptation from speech imagery to semantic visualization
+- Maintain compatibility with existing analysis pipeline (tangent space logistic regression)
+- Follow rhythmic protocol structure (0.8s beep intervals, 8 beeps)
+- Ensure EEG trigger compatibility
+- Save trial data in standardized format (JSON + NumPy)
+
+## Dependencies
+- Primary: PsychoPy (visual, core, sound, event, parallel)
+- Data: numpy, json
+- File handling: pathlib
+- Date/time: datetime
+
+## Code Organization
+- Main experiment: rhythmic_semantic_enhanced.py (full-featured)
+- Simple version: rhythmic_semantic_visualization.py (testing)
+- Configuration: experiment_config.py (all parameters)
+- Examples: examples/ folder for reference implementations
+- Documentation: README_semantic_paradigm.md

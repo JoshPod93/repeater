@@ -1,0 +1,21 @@
+I want a cursorrules.sh file that reinforces all of these instructions.
+
+I want to use a dedicated conda env at all times, if a unique project conda env doesn't exist create one called: typing.
+
+I want to use git for commits and backups.
+
+I want to use cli's for consistent script launching.
+
+I want to only implement changes that are either best practise, if we do novel work this must be preceeded by research to make a well-informed decision.
+
+I want to keep the codebase as clean and intelligible as possible.
+
+I want to silo specific aspects of the project in their own folders with dedicated scripts for operations/launching and function banks.
+
+I want to consistently check for the presence of repeated, redundant, inefficient, legacy, clutter code and remove it while retaining functionality.
+
+I want make the code we create nice and open and modular so it can be easily modified and ported, that means dynamic pathing and the use of many small functions/classes as opposed to big cumbersome functions.
+
+I want zero emojis or special characters used in the codebase to ensure we never get stupid character mapping errors.
+
+I want a dedicated config file that has all important aspects of the paradigm stored for easy adaptation e.g. fixation cross duration or window background colour etc.
