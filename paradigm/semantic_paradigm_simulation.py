@@ -32,7 +32,9 @@ from paradigm.utils import (
     create_metadata, create_trial_data_dict, save_trial_data, print_experiment_summary,
     create_balanced_sequence, validate_trial_sequence,
     create_beep_sound, play_beep,
-    jittered_wait
+    jittered_wait,
+    find_block_folders, get_next_block_number, get_block_folder_path, ensure_block_folder,
+    save_randomization_protocol, load_randomization_protocol, get_block_trials_from_protocol
 )
 
 
@@ -309,17 +311,91 @@ def run_experiment_simulation(
         if verbose:
             print(f"\n[OVERRIDE] Running {n_trials} trials (instead of {config.get('N_TRIALS', 20)})")
     
-    # Get block configuration
-    n_blocks = config.get('N_BLOCKS', 1)
+    # Set up results directory
+    results_dir = project_root / 'data' / 'results'
+    results_dir.mkdir(parents=True, exist_ok=True)
     
-    # Determine which block to run
-    if block_num is None:
-        block_num = 1  # Default to block 1
-    elif block_num < 1 or block_num > n_blocks:
-        raise ValueError(f"Block number must be between 1 and {n_blocks}, got {block_num}")
+    # Check for existing block folders and determine block number dynamically
+    existing_blocks = find_block_folders(results_dir)
+    
+    if not existing_blocks:
+        # No blocks exist - need to generate randomization protocol first
+        print("\n[BLOCK] No existing blocks found. Generating randomization protocol...")
+        
+        n_blocks = config.get('N_BLOCKS', 1)
+        n_trials_total = config.get('N_TRIALS', 20)
+        trials_per_block = n_trials_total // n_blocks
+        
+        # Generate trial sequences for ALL blocks
+        all_blocks_trials = []
+        for b in range(n_blocks):
+            block_trials = create_balanced_sequence(
+                n_trials=trials_per_block,
+                concepts_a=config.get('CONCEPTS_CATEGORY_A', []),
+                concepts_b=config.get('CONCEPTS_CATEGORY_B', []),
+                randomize=config.get('RANDOMIZE_CONCEPTS', True)
+            )
+            all_blocks_trials.append(block_trials)
+        
+        # Save randomization protocol
+        randomization_data = {
+            'all_blocks_trials': all_blocks_trials,
+            'config': {
+                'N_TRIALS': n_trials_total,
+                'N_BLOCKS': n_blocks,
+                'TRIALS_PER_BLOCK': trials_per_block,
+                'CONCEPTS_CATEGORY_A': config.get('CONCEPTS_CATEGORY_A', []),
+                'CONCEPTS_CATEGORY_B': config.get('CONCEPTS_CATEGORY_B', [])
+            },
+            'metadata': {
+                'participant_id': participant_id,
+                'session_id': session_id
+            }
+        }
+        
+        protocol_path = save_randomization_protocol(
+            randomization_data=randomization_data,
+            output_dir=results_dir,
+            participant_id=participant_id,
+            session_id=session_id
+        )
+        print(f"[PROTOCOL] Randomization protocol saved: {protocol_path}")
+        
+        # Block number is 0 (first block, will be saved as Block_0000)
+        block_num = 0
+        
+    else:
+        # Blocks exist - load protocol and determine next block number
+        print(f"\n[BLOCK] Found {len(existing_blocks)} existing block(s)")
+        
+        # Load randomization protocol
+        protocol = load_randomization_protocol(
+            output_dir=results_dir,
+            participant_id=participant_id,
+            session_id=session_id
+        )
+        
+        if protocol is None:
+            raise RuntimeError(
+                f"Found existing blocks but no randomization protocol found. "
+                f"Please delete block folders or ensure protocol exists."
+            )
+        
+        # Determine next block number dynamically
+        next_block_num = get_next_block_number(results_dir)
+        block_num = next_block_num
+        
+        if verbose:
+            n_blocks = protocol['config']['N_BLOCKS']
+            print(f"[BLOCK] Next block number: {block_num} (will be saved as Block_{block_num:04d})")
+            if block_num >= n_blocks:
+                print(f"[WARNING] Block {block_num} exceeds configured {n_blocks} blocks")
+    
+    # Convert block_num to 1-indexed for trigger codes (block_num is 0-indexed for folders)
+    trigger_block_num = block_num + 1
     
     if verbose:
-        print(f"\n[BLOCK] Running block {block_num} of {n_blocks}")
+        print(f"\n[BLOCK] Running block {block_num} (trigger block {trigger_block_num})")
     
     # Initialize trigger handler (test mode - no hardware) with CSV logging
     csv_log_dir = Path(__file__).parent.parent / 'data' / 'triggers'
@@ -405,14 +481,28 @@ def run_experiment_simulation(
     display.clear_screen()
     core.wait(0.1)
     
-    # Create trial sequence
-    print("\n[SEQUENCE] Creating trial sequence...")
-    trials = create_balanced_sequence(
-        n_trials=config.get('N_TRIALS', 20),
-        concepts_a=config.get('CONCEPTS_CATEGORY_A', []),
-        concepts_b=config.get('CONCEPTS_CATEGORY_B', []),
-        randomize=config.get('RANDOMIZE_CONCEPTS', True)
-    )
+    # Get trial sequence for this block
+    protocol = None  # Initialize for later use
+    all_blocks_trials = None  # Initialize for later use
+    
+    if not existing_blocks:
+        # First block - use trials from protocol we just generated
+        trials = all_blocks_trials[block_num]
+        print(f"\n[SEQUENCE] Using trials from generated protocol (block {block_num})")
+    else:
+        # Subsequent blocks - load from protocol
+        protocol = load_randomization_protocol(
+            output_dir=results_dir,
+            participant_id=participant_id,
+            session_id=session_id
+        )
+        if protocol is None:
+            raise RuntimeError(
+                f"Found existing blocks but no randomization protocol found. "
+                f"Please delete block folders or ensure protocol exists."
+            )
+        trials = get_block_trials_from_protocol(protocol, block_num)
+        print(f"\n[SEQUENCE] Loaded trials from protocol (block {block_num})")
     
     # Validate sequence
     is_valid, error_msg = validate_trial_sequence(
@@ -427,24 +517,23 @@ def run_experiment_simulation(
     
     # Start experiment
     print("\n" + "="*80)
-    print(f"STARTING SIMULATION EXPERIMENT - BLOCK {block_num}")
+    print(f"STARTING SIMULATION EXPERIMENT - BLOCK {block_num} (Block_{block_num:04d})")
     print("="*80)
     
     experiment_clock.reset()
     
-    # Calculate trials for this block
-    n_trials_total = len(trials)
-    n_blocks = config.get('N_BLOCKS', 1)
-    trials_per_block = n_trials_total // n_blocks
+    # Trials are already for this block (from protocol)
+    block_trials = trials
+    n_trials_total = config.get('N_TRIALS', 20)  # Total across all blocks
     
-    block_start_idx = (block_num - 1) * trials_per_block
-    block_end_idx = block_start_idx + trials_per_block
-    block_trials = trials[block_start_idx:block_end_idx]
+    # Calculate global trial numbers (1-indexed across all blocks)
+    trials_per_block = len(block_trials)
+    global_trial_start = block_num * trials_per_block + 1
     
-    print(f"\n[BLOCK {block_num}] Running trials {block_start_idx + 1}-{block_end_idx} ({len(block_trials)} trials)")
+    print(f"\n[BLOCK {block_num}] Running {len(block_trials)} trials (global trials {global_trial_start}-{global_trial_start + len(block_trials) - 1})")
     
-    # Block start
-    block_start_code = get_block_start_code(block_num)
+    # Block start (use 1-indexed for trigger codes)
+    block_start_code = get_block_start_code(trigger_block_num)
     timestamp, _ = trigger_handler.send_trigger(
         block_start_code,
         event_name=f'block_{block_num}_start'
@@ -453,9 +542,9 @@ def run_experiment_simulation(
     
     # Run trials in this block
     # Trial numbers are global (1-indexed across all blocks)
-    for trial_spec in block_trials:
+    for trial_idx, trial_spec in enumerate(block_trials):
         # Get global trial number (1-indexed)
-        global_trial_num = block_start_idx + len(trial_data_list) + 1
+        global_trial_num = global_trial_start + trial_idx
         
         # Check for escape
         keys = event.getKeys(keyList=['escape'])
@@ -485,27 +574,29 @@ def run_experiment_simulation(
             wait_duration = jittered_wait(inter_trial_interval, jitter_range) if use_jitter else inter_trial_interval
             core.wait(wait_duration)
     
-    # Block end
-    block_end_code = get_block_end_code(block_num)
+    # Block end (use 1-indexed for trigger codes)
+    block_end_code = get_block_end_code(trigger_block_num)
     timestamp, _ = trigger_handler.send_trigger(
         block_end_code,
-        event_name=f'block_{block_num}_end'
+        event_name=f'block_{trigger_block_num}_end'
     )
-    print(f"[TRIGGER] Block {block_num} end (trigger {block_end_code}) at {timestamp:.3f}s")
+    print(f"[TRIGGER] Block {trigger_block_num} end (trigger {block_end_code}) at {timestamp:.3f}s")
     
     # Close trigger handler (saves CSV file)
     trigger_handler.close()
     
-    # Save data
+    # Save data to block folder
     print("\n[DATA] Saving trial data...")
-    output_dir = project_root / 'data' / 'results'
+    block_folder = ensure_block_folder(results_dir, block_num)
+    print(f"[BLOCK] Saving to: {block_folder}")
     
     saved_files = save_trial_data(
         metadata=metadata,
         trial_data=trial_data_list,
-        output_dir=output_dir,
+        output_dir=results_dir,
         participant_id=participant_id,
-        session_id=session_id
+        session_id=session_id,
+        block_folder=block_folder
     )
     
     total_duration = experiment_clock.getTime()

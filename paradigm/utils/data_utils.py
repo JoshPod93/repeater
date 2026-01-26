@@ -82,12 +82,14 @@ def save_trial_data(metadata: Dict[str, Any],
                    output_dir: Path,
                    participant_id: str,
                    session_id: int,
+                   block_folder: Optional[Path] = None,
                    save_json: bool = True,
                    save_numpy: bool = True) -> Dict[str, Path]:
     """
     Save trial data to files.
     
     Saves data in both JSON (human-readable) and NumPy (analysis-friendly) formats.
+    If block_folder is provided, saves to that folder. Otherwise saves to output_dir.
     
     Parameters
     ----------
@@ -96,22 +98,26 @@ def save_trial_data(metadata: Dict[str, Any],
     trial_data : list
         List of trial data dictionaries
     output_dir : Path
-        Output directory
+        Output directory (base results folder)
     participant_id : str
         Participant identifier
     session_id : int
         Session number
+    block_folder : Path, optional
+        Block folder path (e.g., Block_0000). If None, saves directly to output_dir
     save_json : bool
         Whether to save JSON file
     save_numpy : bool
         Whether to save NumPy file
-    
+        
     Returns
     -------
     dict
         Dictionary with paths to saved files ('json' and/or 'numpy')
     """
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Use block_folder if provided, otherwise use output_dir
+    save_dir = block_folder if block_folder else output_dir
+    save_dir.mkdir(parents=True, exist_ok=True)
     
     # Generate filename with participant info
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -121,7 +127,7 @@ def save_trial_data(metadata: Dict[str, Any],
     
     # Save JSON file
     if save_json:
-        json_file = output_dir / f"{base_filename}_trials.json"
+        json_file = save_dir / f"{base_filename}_trials.json"
         with open(json_file, 'w') as f:
             json.dump({
                 'metadata': metadata,
@@ -131,7 +137,7 @@ def save_trial_data(metadata: Dict[str, Any],
     
     # Save NumPy file
     if save_numpy:
-        np_file = output_dir / f"{base_filename}_trials.npy"
+        np_file = save_dir / f"{base_filename}_trials.npy"
         np.save(np_file, trial_data, allow_pickle=True)
         saved_files['numpy'] = np_file
     

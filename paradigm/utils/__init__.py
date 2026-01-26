@@ -4,14 +4,14 @@ Paradigm utilities package.
 Provides utilities for trigger handling, display management, data logging, and randomization.
 """
 
-from .trigger_utils import (
-    TriggerHandler,
-    TRIGGER_CODES,
-    create_trigger_handler,
-    get_trial_start_code,
-    get_trial_end_code,
-    get_block_start_code,
-    get_block_end_code
+from .block_utils import (
+    find_block_folders,
+    get_next_block_number,
+    get_block_folder_path,
+    ensure_block_folder,
+    save_randomization_protocol,
+    load_randomization_protocol,
+    get_block_trials_from_protocol
 )
 
 from .display_utils import (
@@ -48,7 +48,26 @@ from .timing_utils import (
     get_jittered_duration
 )
 
+from .trigger_utils import (
+    TriggerHandler,
+    TRIGGER_CODES,
+    create_trigger_handler,
+    get_trial_start_code,
+    get_trial_end_code,
+    get_block_start_code,
+    get_block_end_code
+)
+
 __all__ = [
+    # Block management utilities
+    'find_block_folders',
+    'get_next_block_number',
+    'get_block_folder_path',
+    'ensure_block_folder',
+    'save_randomization_protocol',
+    'load_randomization_protocol',
+    'get_block_trials_from_protocol',
+    
     # Trigger utilities
     'TriggerHandler',
     'TRIGGER_CODES',
