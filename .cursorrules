@@ -63,8 +63,10 @@
 - Date/time: datetime
 
 ## Code Organization
-- Main experiment: rhythmic_semantic_enhanced.py (full-featured)
-- Simple version: rhythmic_semantic_visualization.py (testing)
-- Configuration: experiment_config.py (all parameters)
+- Main experiment: paradigm/semantic_paradigm.py (full-featured)
+- Launcher: paradigm/scripts/run_experiment.py
+- Configuration: config/experiment_config.py (all parameters)
+- Utilities: paradigm/utils/ (trigger, display, data, randomization)
 - Examples: examples/ folder for reference implementations
-- Documentation: README_semantic_paradigm.md
+- Analysis: analysis/ folder for post-processing
+- Documentation: docs/ folder and README files

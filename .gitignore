@@ -37,7 +37,7 @@ ENV/
 *~
 
 # Data files
-experiment_data/
+data/results/
 *.npy
 *.npz
 *.h5
@@ -66,7 +66,7 @@ files/
 *.zip
 
 # Keep structure but ignore contents
-!experiment_data/.gitkeep
+!data/results/.gitkeep
 
 # Security - never commit tokens or credentials
 *.token
