@@ -1,0 +1,14 @@
+Hey man,
+For some reason, I thought you were asking about the decoder. Regarding the experiment, I'm using the same data I acquired three years ago with matlab. The design was relatively simple: first, participants were prompted with the class to imagine; then, a rhythm was marked with a beep at each interval (t), instructing them to perform the same class each time they heard it. I’ve mocked up this design in Psychopy, see attached (are you using python for the experiments?).
+As for the rhythm frequency, I used 0.8 seconds to try and enclose the time signature. However, two other datasets I analyzed used 1.4 - 2 seconds, and the pipeline performed similarly well with both.
+Regards,
+Alberto
+
+
+Hey Josh,
+
+I hope you are doing good! Yes, a simple tangent space + logistic regression pipeline worked better than chance for rhythmic repetition of imagery. It's fun because I spent a long time trying to classify the whole repetition signal as one trial, expecting any signal enhancement, but only when I managed each repetition as a single trial did I get better results (also many more trials). I am attaching a .py file with the code. In essence, I filtered the signal into 20 bands, converted the trials to cov matrices, projected them with the TS function, concatenated everything, and let the logistic regressor weight the features. Let me know how it works, if you have any comments or need something else.
+
+
+Kind regards,
+Alberto
