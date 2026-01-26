@@ -158,6 +158,7 @@ def run_single_trial_simulation(
         event_name='trial_start'
     )
     trial_data['timestamps']['trial_start'] = timestamp
+    print(f"  [SIM] Trial start at {timestamp:.3f}s")
     
     # 1. FIXATION (NO JITTER - important timing)
     display.show_fixation()
