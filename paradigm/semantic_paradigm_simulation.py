@@ -12,6 +12,7 @@ Date: January 26, 2026
 
 import os
 import sys
+import re
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
@@ -34,6 +35,7 @@ from paradigm.utils import (
     create_balanced_sequence, validate_trial_sequence, create_stratified_block_sequence,
     create_beep_sound, play_beep,
     jittered_wait,
+    get_subject_folder, find_subject_folders, get_latest_subject_folder,
     find_block_folders, get_next_block_number, get_block_folder_path, ensure_block_folder,
     save_randomization_protocol, load_randomization_protocol, get_block_trials_from_protocol
 )
@@ -247,31 +249,30 @@ def run_single_trial_simulation(
 
 def run_experiment_simulation(
     participant_id: str = 'sim_9999',
-    session_id: int = 1,
     config_path: Optional[Path] = None,
     n_trials: Optional[int] = None,
     n_beeps: Optional[int] = None,
-    block_num: Optional[int] = None,
     verbose: bool = True
 ) -> Dict[str, any]:
     """
     Run complete experiment simulation.
     
     Tests all functionality without requiring EEG hardware or participant.
+    Automatically detects existing blocks and runs the next block in sequence.
     
     Parameters
     ----------
     participant_id : str
         Participant identifier (default: sim_9999 for simulation)
-    session_id : int
-        Session number
     config_path : Path, optional
         Path to config file
     n_trials : int, optional
         Number of trials to run (default: from config)
+    n_beeps : int, optional
+        Override number of beeps per trial (1-8)
     verbose : bool
         Whether to print verbose output
-    
+        
     Returns
     -------
     dict
@@ -281,7 +282,6 @@ def run_experiment_simulation(
     print("SEMANTIC VISUALIZATION PARADIGM - SIMULATION MODE")
     print("="*80)
     print(f"Participant: {participant_id}")
-    print(f"Session: {session_id}")
     print(f"Mode: SIMULATION (no EEG hardware required)")
     print("="*80)
     
@@ -298,44 +298,96 @@ def run_experiment_simulation(
         print(f"  Beep interval: {config.get('BEEP_INTERVAL', 0.8)}s")
         print(f"  Number of beeps: {config.get('N_BEEPS', 8)}")
     
-    # Override trial count if specified
+    # Override N_BEEPS if provided via CLI (for rapid testing)
+    if n_beeps is not None:
+        if n_beeps < 1 or n_beeps > 8:
+            raise ValueError(f"N_BEEPS must be between 1 and 8, got {n_beeps}")
+        config['N_BEEPS'] = n_beeps
+        if verbose:
+            print(f"\n[OVERRIDE] Using {n_beeps} beeps per trial (instead of {config.get('N_BEEPS', 8)})")
+    
+    # Override trial count if specified (do this BEFORE protocol generation)
     if n_trials is not None:
         config['N_TRIALS'] = n_trials
         if verbose:
-            print(f"\n[OVERRIDE] Running {n_trials} trials (instead of {config.get('N_TRIALS', 20)})")
+            print(f"\n[OVERRIDE] Running {n_trials} trials total (instead of {config.get('N_TRIALS', 20)})")
     
-    # Set up results directory
-    results_dir = project_root / 'data' / 'results'
+    # Set up results directory and subject folder
+    # Simulation data goes to sim_data/sim_results to keep it separate from real experiment data
+    results_dir = project_root / 'sim_data' / 'sim_results'
     results_dir.mkdir(parents=True, exist_ok=True)
     
-    # Check for existing block folders and determine block number dynamically
-    existing_blocks = find_block_folders(results_dir)
+    # Get or create subject folder
+    # Check if subject folder already exists (for continuing blocks)
+    existing_subject_folders = find_subject_folders(results_dir, participant_id)
+    
+    if existing_subject_folders:
+        # Use existing subject folder (most recent)
+        subject_folder = existing_subject_folders[0]
+        if verbose:
+            print(f"\n[SUBJECT] Using existing subject folder: {subject_folder.name}")
+    else:
+        # Create new subject folder with timestamp
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        subject_folder = get_subject_folder(results_dir, participant_id, timestamp)
+        if verbose:
+            print(f"\n[SUBJECT] Created new subject folder: {subject_folder.name}")
+    
+    # Extract timestamp from subject folder name for use in randomization
+    folder_name = subject_folder.name
+    timestamp_match = re.search(r'(\d{8}_\d{6})$', folder_name)
+    if timestamp_match:
+        timestamp = timestamp_match.group(1)
+    else:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')  # Fallback
+    
+    # Check for existing block folders within subject folder
+    existing_blocks = find_block_folders(subject_folder)
+    
+    # Initialize all_blocks_trials here so it's accessible later
+    all_blocks_trials = []
+    protocol = None
     
     if not existing_blocks:
         # No blocks exist - need to generate randomization protocol first
         print("\n[BLOCK] No existing blocks found. Generating randomization protocol...")
         
         n_blocks = config.get('N_BLOCKS', 1)
-        n_trials_total = config.get('N_TRIALS', 20)
-        trials_per_block = n_trials_total // n_blocks
+        n_trials_total = config.get('N_TRIALS', 20)  # This now includes any override
         
-        # Generate timestamp for seed generation (shared across all blocks)
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        # Calculate how many blocks we actually need
+        # If we have fewer trials than blocks, only generate trials for the blocks we need
+        blocks_to_generate = min(n_blocks, n_trials_total)
+        trials_per_block = max(1, n_trials_total // blocks_to_generate) if blocks_to_generate > 0 else 1
         
-        # Generate trial sequences for ALL blocks using stratified randomization
+        if verbose:
+            print(f"[PROTOCOL] Generating protocol: {blocks_to_generate} blocks (of {n_blocks} configured), {n_trials_total} total trials, {trials_per_block} trials per block")
+        
+        # Generate trial sequences for blocks we need
         # Each block gets unique seed but same timestamp ensures reproducibility
         all_blocks_trials = []
-        for b in range(n_blocks):
+        for b in range(blocks_to_generate):
+            # For the last block, include any remainder trials
+            if b == blocks_to_generate - 1:
+                # Last block gets remaining trials
+                remaining_trials = n_trials_total - (trials_per_block * (blocks_to_generate - 1))
+                block_trial_count = max(remaining_trials, trials_per_block)
+            else:
+                block_trial_count = trials_per_block
+            
             block_trials = create_stratified_block_sequence(
-                n_trials_per_block=trials_per_block,
+                n_trials_per_block=block_trial_count,
                 concepts_a=config.get('CONCEPTS_CATEGORY_A', []),
                 concepts_b=config.get('CONCEPTS_CATEGORY_B', []),
                 block_num=b,
                 participant_id=participant_id,
-                session_id=session_id,
                 timestamp=timestamp
             )
             all_blocks_trials.append(block_trials)
+        
+        # Pad remaining blocks with empty lists if needed
+        for b in range(blocks_to_generate, n_blocks):
+            all_blocks_trials.append([])
         
         # Save randomization protocol
         randomization_data = {
@@ -349,16 +401,14 @@ def run_experiment_simulation(
             },
             'metadata': {
                 'participant_id': participant_id,
-                'session_id': session_id,
                 'timestamp': timestamp
             }
         }
         
         protocol_path = save_randomization_protocol(
             randomization_data=randomization_data,
-            output_dir=results_dir,
-            participant_id=participant_id,
-            session_id=session_id
+            subject_folder=subject_folder,
+            participant_id=participant_id
         )
         print(f"[PROTOCOL] Randomization protocol saved: {protocol_path}")
         
@@ -366,14 +416,13 @@ def run_experiment_simulation(
         block_num = 0
         
     else:
-        # Blocks exist - load protocol and determine next block number
+        # Blocks exist - load protocol and determine next block number automatically
         print(f"\n[BLOCK] Found {len(existing_blocks)} existing block(s)")
         
         # Load randomization protocol
         protocol = load_randomization_protocol(
-            output_dir=results_dir,
-            participant_id=participant_id,
-            session_id=session_id
+            subject_folder=subject_folder,
+            participant_id=participant_id
         )
         
         if protocol is None:
@@ -382,15 +431,17 @@ def run_experiment_simulation(
                 f"Please delete block folders or ensure protocol exists."
             )
         
-        # Determine next block number dynamically
-        next_block_num = get_next_block_number(results_dir)
+        # Auto-detect: use next available block number
+        next_block_num = get_next_block_number(subject_folder)
         block_num = next_block_num
         
         if verbose:
             n_blocks = protocol['config']['N_BLOCKS']
-            print(f"[BLOCK] Next block number: {block_num} (will be saved as Block_{block_num:04d})")
+            print(f"[AUTO] Next block number: {block_num} (will be saved as Block_{block_num:04d})")
             if block_num >= n_blocks:
                 print(f"[WARNING] Block {block_num} exceeds configured {n_blocks} blocks")
+                print(f"[INFO] All {n_blocks} blocks completed for this participant.")
+                return {}
     
     # Convert block_num to 1-indexed for trigger codes (block_num is 0-indexed for folders)
     trigger_block_num = block_num + 1
@@ -399,10 +450,9 @@ def run_experiment_simulation(
         print(f"\n[BLOCK] Running block {block_num} (trigger block {trigger_block_num})")
     
     # Initialize trigger handler (test mode - no hardware) with CSV logging
-    csv_log_dir = Path(__file__).parent.parent / 'data' / 'triggers'
-    csv_log_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    csv_log_path = csv_log_dir / f"sub-{participant_id}_ses-{session_id}_{timestamp}_triggers.csv"
+    # Save trigger CSV in subject folder (same organization as results)
+    csv_timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    csv_log_path = subject_folder / f"sub-{participant_id}_{csv_timestamp}_triggers.csv"
     
     trigger_handler = create_trigger_handler(
         port_address=config.get('PARALLEL_PORT_ADDRESS', 0x0378),
@@ -448,11 +498,7 @@ def run_experiment_simulation(
     
     # Data storage
     trial_data_list = []
-    metadata = create_metadata(
-        participant_id=participant_id,
-        session_id=session_id,
-        config=config
-    )
+    metadata = create_metadata(participant_id, config)
     
     # Clear screen and show warning
     display.clear_screen()
@@ -485,20 +531,14 @@ def run_experiment_simulation(
     # Get trial sequence for this block
     if not existing_blocks:
         # First block - use trials from protocol we just generated
-        # all_blocks_trials was created above in the if not existing_blocks block
         trials = all_blocks_trials[block_num]
         print(f"\n[SEQUENCE] Using trials from generated protocol (block {block_num})")
     else:
         # Subsequent blocks - load from protocol
-        protocol = load_randomization_protocol(
-            output_dir=results_dir,
-            participant_id=participant_id,
-            session_id=session_id
-        )
         if protocol is None:
-            raise RuntimeError(
-                f"Found existing blocks but no randomization protocol found. "
-                f"Please delete block folders or ensure protocol exists."
+            protocol = load_randomization_protocol(
+                subject_folder=subject_folder,
+                participant_id=participant_id
             )
         trials = get_block_trials_from_protocol(protocol, block_num)
         print(f"\n[SEQUENCE] Loaded trials from protocol (block {block_num})")
@@ -535,9 +575,9 @@ def run_experiment_simulation(
     block_start_code = get_block_start_code(trigger_block_num)
     timestamp, _ = trigger_handler.send_trigger(
         block_start_code,
-        event_name=f'block_{block_num}_start'
+        event_name=f'block_{trigger_block_num}_start'
     )
-    print(f"[TRIGGER] Block {block_num} start (trigger {block_start_code}) at {timestamp:.3f}s")
+    print(f"[TRIGGER] Block {trigger_block_num} start (trigger {block_start_code}) at {timestamp:.3f}s")
     
     # Run trials in this block
     # Trial numbers are global (1-indexed across all blocks)
@@ -586,15 +626,14 @@ def run_experiment_simulation(
     
     # Save data to block folder
     print("\n[DATA] Saving trial data...")
-    block_folder = ensure_block_folder(results_dir, block_num)
+    block_folder = ensure_block_folder(subject_folder, block_num)
     print(f"[BLOCK] Saving to: {block_folder}")
     
     saved_files = save_trial_data(
         metadata=metadata,
         trial_data=trial_data_list,
-        output_dir=results_dir,
+        subject_folder=subject_folder,
         participant_id=participant_id,
-        session_id=session_id,
         block_folder=block_folder
     )
     
@@ -639,7 +678,8 @@ def run_experiment_simulation(
     
     return {
         'participant_id': participant_id,
-        'session_id': session_id,
+        'subject_folder': str(subject_folder),
+        'block_num': block_num,
         'trials_completed': len(trial_data_list),
         'total_duration': total_duration,
         'saved_files': saved_files,
@@ -655,16 +695,16 @@ if __name__ == "__main__":
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Run simulation with default settings
+  # Run simulation with default settings (auto-detects next block)
   python paradigm/semantic_paradigm_simulation.py
   
-  # Run with specific participant ID
-  python paradigm/semantic_paradigm_simulation.py --participant-id sim_0001
+  # Run with specific participant ID (auto-detects next block)
+  python paradigm/semantic_paradigm_simulation.py --participant-id 9999
   
-  # Run fewer trials for quick test
+  # Run fewer trials for quick test (auto-detects next block)
   python paradigm/semantic_paradigm_simulation.py --n-trials 5
   
-  # Verbose output
+  # Verbose output (auto-detects next block)
   python paradigm/semantic_paradigm_simulation.py --verbose
         """
     )
@@ -677,31 +717,10 @@ Examples:
     )
     
     parser.add_argument(
-        '--session', '-s',
-        type=int,
-        default=1,
-        help='Session number (default: 1)'
-    )
-    
-    parser.add_argument(
         '--n-trials', '-n',
         type=int,
         default=None,
         help='Number of trials to run (default: from config)'
-    )
-    
-    parser.add_argument(
-        '--config',
-        type=str,
-        default=None,
-        help='Path to config file (default: config/experiment_config.py)'
-    )
-    
-    parser.add_argument(
-        '--block', '-b',
-        type=int,
-        default=None,
-        help='Block number to run (default: 1). Each execution runs ONE block only.'
     )
     
     parser.add_argument(
@@ -719,18 +738,12 @@ Examples:
     
     args = parser.parse_args()
     
-    config_path = None
-    if args.config:
-        config_path = Path(args.config)
-    
     try:
         results = run_experiment_simulation(
             participant_id=args.participant_id,
-            session_id=args.session,
-            config_path=config_path,
+            config_path=None,  # Always use default config path
             n_trials=args.n_trials,
             n_beeps=args.n_beeps,
-            block_num=args.block,
             verbose=args.verbose
         )
         

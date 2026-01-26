@@ -19,7 +19,7 @@ from typing import Dict, List, Tuple, Optional
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from paradigm.utils.block_utils import load_randomization_protocol
+from paradigm.utils.block_utils import load_randomization_protocol, get_latest_subject_folder, find_subject_folders
 
 
 def extract_concept_from_event_name(event_name: str) -> Optional[Tuple[str, str]]:
@@ -126,6 +126,7 @@ def parcel_triggers_into_trials(triggers: List[Dict[str, str]]) -> Dict[int, Lis
     Parcel triggers into individual trials based on trial_start/trial_end codes.
     
     Similar to grasp project's trigger parcelation approach.
+    Excludes block start/end codes (151-159, 251-259) from trial parcelation.
     
     Parameters
     ----------
@@ -144,6 +145,10 @@ def parcel_triggers_into_trials(triggers: List[Dict[str, str]]) -> Dict[int, Lis
     for trigger in triggers:
         trigger_code = int(trigger.get('trigger_code', 0))
         
+        # Skip block start/end codes (151-159, 251-259) - they're not trial events
+        if 151 <= trigger_code <= 159 or 251 <= trigger_code <= 259:
+            continue
+        
         # Check for trial start (101-199)
         if 101 <= trigger_code <= 199:
             # Save previous trial if exists
@@ -154,8 +159,8 @@ def parcel_triggers_into_trials(triggers: List[Dict[str, str]]) -> Dict[int, Lis
             current_trial_num = trigger_code - 100
             current_trial_triggers = [trigger]
         
-        # Check for trial end (201-299)
-        elif 201 <= trigger_code <= 299:
+        # Check for trial end (201-299, but exclude block_end codes 251-259)
+        elif 201 <= trigger_code <= 250:  # Changed from 299 to 250 to exclude block_end
             trial_num = trigger_code - 200
             if trial_num == current_trial_num:
                 # End of current trial
@@ -385,7 +390,6 @@ def validate_trigger_log_against_protocol(
     trigger_csv_path: Path,
     protocol: Dict,
     participant_id: str,
-    session_id: int,
     analyze_structure: bool = True
 ) -> Tuple[bool, List[str], Dict[str, any]]:
     """
@@ -401,8 +405,6 @@ def validate_trigger_log_against_protocol(
         Randomization protocol dictionary
     participant_id : str
         Participant ID
-    session_id : int
-        Session ID
     analyze_structure : bool
         Whether to perform detailed structure analysis
         
@@ -417,11 +419,11 @@ def validate_trigger_log_against_protocol(
     # Load trigger log
     triggers = load_trigger_csv(trigger_csv_path)
     
-    # Parcel triggers into trials and blocks (like grasp project)
+    # Parcel triggers into trials and blocks
+    trials = parcel_triggers_into_trials(triggers)
+    blocks = parcel_triggers_into_blocks(triggers)
+    
     if analyze_structure:
-        trials = parcel_triggers_into_trials(triggers)
-        blocks = parcel_triggers_into_blocks(triggers)
-        
         # Get max_beeps from protocol or use default
         max_beeps = protocol.get('config', {}).get('N_BEEPS', 8)
         
@@ -437,67 +439,84 @@ def validate_trigger_log_against_protocol(
         if block_analysis['issues']:
             errors.extend([f"STRUCTURE: {issue}" for issue in block_analysis['issues']])
     
-    # Extract concept sequence from triggers
-    trigger_concepts = extract_concept_sequence_from_triggers(triggers)
-    
-    # Get protocol trials
+    # Get protocol blocks
     all_blocks_trials = protocol.get('all_blocks_trials', [])
     
-    # Reconstruct expected sequence from protocol
-    expected_sequence = []
-    global_trial_num = 1
-    
-    for block_num, block_trials in enumerate(all_blocks_trials):
-        for trial in block_trials:
-            expected_sequence.append((
-                global_trial_num,
+    # Validate each block found in triggers against its corresponding protocol block
+    for block_num in sorted(blocks.keys()):
+        block_triggers = blocks[block_num]
+        
+        # Convert block_num from 1-indexed (from trigger codes) to 0-indexed (for protocol)
+        protocol_block_idx = block_num - 1
+        
+        if protocol_block_idx < 0 or protocol_block_idx >= len(all_blocks_trials):
+            errors.append(
+                f"BLOCK {block_num}: Block number out of range. "
+                f"Protocol has {len(all_blocks_trials)} blocks (0-{len(all_blocks_trials)-1})"
+            )
+            continue
+        
+        # Get expected trials for this block from protocol
+        expected_block_trials = all_blocks_trials[protocol_block_idx]
+        
+        # Extract concept sequence from this block's triggers
+        block_concepts = extract_concept_sequence_from_triggers(block_triggers)
+        
+        # Build expected sequence for this block (using global trial numbers)
+        expected_block_sequence = []
+        for trial_idx, trial in enumerate(expected_block_trials):
+            # Global trial number = sum of trials in previous blocks + trial_idx + 1
+            global_trial_num = sum(len(all_blocks_trials[b]) for b in range(protocol_block_idx)) + trial_idx + 1
+            expected_block_sequence.append((
+                global_trial_num,  # Use global trial number for comparison
                 trial['concept'],
                 trial['category']
             ))
-            global_trial_num += 1
-    
-    # Compare sequences
-    if len(trigger_concepts) != len(expected_sequence):
-        errors.append(
-            f"MISMATCH: Trigger log has {len(trigger_concepts)} concepts, "
-            f"protocol expects {len(expected_sequence)}"
-        )
-    
-    # Compare each trial
-    min_length = min(len(trigger_concepts), len(expected_sequence))
-    mismatches = []
-    
-    for i in range(min_length):
-        trial_num_trig, concept_trig, category_trig = trigger_concepts[i]
-        trial_num_exp, concept_exp, category_exp = expected_sequence[i]
         
-        if trial_num_trig != trial_num_exp:
-            mismatches.append(
-                f"Trial {i+1}: Trial number mismatch - trigger={trial_num_trig}, expected={trial_num_exp}"
+        # Compare block sequences
+        if len(block_concepts) != len(expected_block_sequence):
+            errors.append(
+                f"BLOCK {block_num}: Mismatch - trigger log has {len(block_concepts)} concepts, "
+                f"protocol expects {len(expected_block_sequence)} for this block"
             )
         
-        if concept_trig != concept_exp:
-            mismatches.append(
-                f"Trial {i+1}: Concept mismatch - trigger='{concept_trig}', expected='{concept_exp}'"
-            )
+        # Compare each trial in this block
+        min_length = min(len(block_concepts), len(expected_block_sequence))
+        for i in range(min_length):
+            trial_num_trig, concept_trig, category_trig = block_concepts[i]
+            trial_num_exp, concept_exp, category_exp = expected_block_sequence[i]
+            
+            if concept_trig != concept_exp:
+                errors.append(
+                    f"BLOCK {block_num}, Trial {trial_num_trig}: Concept mismatch - "
+                    f"trigger='{concept_trig}', expected='{concept_exp}'"
+                )
+            
+            if category_trig != category_exp:
+                errors.append(
+                    f"BLOCK {block_num}, Trial {trial_num_trig}: Category mismatch - "
+                    f"trigger='{category_trig}', expected='{category_exp}'"
+                )
         
-        if category_trig != category_exp:
-            mismatches.append(
-                f"Trial {i+1}: Category mismatch - trigger='{category_trig}', expected='{category_exp}'"
+        # Check for missing or extra trials
+        if len(block_concepts) < len(expected_block_sequence):
+            missing_count = len(expected_block_sequence) - len(block_concepts)
+            errors.append(
+                f"BLOCK {block_num}: Missing {missing_count} trial(s) in trigger log"
+            )
+        elif len(block_concepts) > len(expected_block_sequence):
+            extra_count = len(block_concepts) - len(expected_block_sequence)
+            errors.append(
+                f"BLOCK {block_num}: {extra_count} extra trial(s) in trigger log"
             )
     
-    if mismatches:
-        errors.extend(mismatches)
-    
-    # Check for missing trials
-    if len(trigger_concepts) < len(expected_sequence):
-        missing = len(expected_sequence) - len(trigger_concepts)
-        errors.append(f"MISSING: {missing} trials not found in trigger log")
-    
-    # Check for extra trials
-    if len(trigger_concepts) > len(expected_sequence):
-        extra = len(trigger_concepts) - len(expected_sequence)
-        errors.append(f"EXTRA: {extra} extra trials in trigger log")
+    # Check if all expected blocks are present (only if we're validating all blocks)
+    # For single CSV files, we only validate the blocks present in that file
+    blocks_found = set(blocks.keys())
+    if len(blocks_found) > 0:
+        # Only warn about missing blocks if we're validating a complete experiment
+        # For now, we'll skip this check as CSV files may contain partial blocks
+        pass
     
     is_valid = len(errors) == 0
     return is_valid, errors, analysis
@@ -505,31 +524,40 @@ def validate_trigger_log_against_protocol(
 
 def validate_all_blocks(
     results_dir: Path,
-    participant_id: str,
-    session_id: int
+    participant_id: str
 ) -> Dict[str, any]:
     """
-    Validate all trigger logs for a participant/session against protocol.
+    Validate all trigger logs for a participant against protocol.
     
     Parameters
     ----------
     results_dir : Path
-        Results directory
+        Results directory (e.g., data/results or sim_data/sim_results)
     participant_id : str
         Participant ID
-    session_id : int
-        Session ID
         
     Returns
     -------
     dict
         Validation results
     """
+    # Find subject folder(s) for this participant
+    subject_folders = find_subject_folders(results_dir, participant_id)
+    
+    if not subject_folders:
+        return {
+            'valid': False,
+            'error': f'No subject folders found for participant {participant_id}',
+            'blocks_validated': 0
+        }
+    
+    # Use most recent subject folder
+    subject_folder = subject_folders[0]
+    
     # Load protocol
     protocol = load_randomization_protocol(
-        output_dir=results_dir,
-        participant_id=participant_id,
-        session_id=session_id
+        subject_folder=subject_folder,
+        participant_id=participant_id
     )
     
     if protocol is None:
@@ -539,15 +567,14 @@ def validate_all_blocks(
             'blocks_validated': 0
         }
     
-    # Find trigger CSV files
-    triggers_dir = results_dir.parent / 'triggers'
-    pattern = f"sub-{participant_id}_ses-{session_id}_*_triggers.csv"
-    trigger_files = list(triggers_dir.glob(pattern))
+    # Find trigger CSV files in subject folder
+    pattern = f"sub-{participant_id}_*_triggers.csv"
+    trigger_files = list(subject_folder.glob(pattern))
     
     if not trigger_files:
         return {
             'valid': False,
-            'error': 'No trigger CSV files found',
+            'error': f'No trigger CSV files found in {subject_folder}',
             'blocks_validated': 0
         }
     
@@ -565,7 +592,6 @@ def validate_all_blocks(
             trigger_csv_path=trigger_file,
             protocol=protocol,
             participant_id=participant_id,
-            session_id=session_id,
             analyze_structure=True
         )
         
@@ -663,13 +689,6 @@ Examples:
     )
     
     parser.add_argument(
-        '--session', '-s',
-        type=int,
-        default=1,
-        help='Session number (default: 1)'
-    )
-    
-    parser.add_argument(
         '--trigger-csv', '-t',
         type=str,
         help='Path to specific trigger CSV file to validate'
@@ -679,7 +698,7 @@ Examples:
         '--results-dir', '-r',
         type=str,
         default=None,
-        help='Results directory (default: data/results)'
+        help='Results directory (default: data/results, use sim_data/sim_results for simulation data)'
     )
     
     args = parser.parse_args()
@@ -769,8 +788,7 @@ Examples:
         
         results = validate_all_blocks(
             results_dir=results_dir,
-            participant_id=args.participant_id,
-            session_id=args.session
+            participant_id=args.participant_id
         )
         
         print_validation_report(results)

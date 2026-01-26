@@ -158,7 +158,6 @@ def create_stratified_block_sequence(
     concepts_b: List[str],
     block_num: int,
     participant_id: str,
-    session_id: int,
     timestamp: str
 ) -> List[Dict[str, any]]:
     """
@@ -180,8 +179,6 @@ def create_stratified_block_sequence(
         Block number (0-indexed)
     participant_id : str
         Participant ID
-    session_id : int
-        Session ID
     timestamp : str
         Timestamp string for seed generation (format: YYYYMMDD_HHMMSS)
         
@@ -191,9 +188,9 @@ def create_stratified_block_sequence(
         Stratified trial sequence for this block
     """
     # Create unique seed for this block
-    # Combines: participant_id + session_id + timestamp + block_num
+    # Combines: participant_id + timestamp + block_num
     # This ensures each block has unique randomization while being reproducible
-    seed_str = f"{participant_id}_{session_id}_{timestamp}_block{block_num}"
+    seed_str = f"{participant_id}_{timestamp}_block{block_num}"
     seed = hash(seed_str) % (2**31)
     np.random.seed(seed)
     
@@ -203,6 +200,21 @@ def create_stratified_block_sequence(
     
     # For balanced design, we need equal A/B trials
     trials_per_category = n_trials_per_block // 2
+    
+    # Special case: if only 1 trial, randomly pick A or B
+    if n_trials_per_block == 1:
+        category = np.random.choice(['A', 'B'])
+        if category == 'A':
+            concept = np.random.choice(concepts_a) if concepts_a else None
+        else:
+            concept = np.random.choice(concepts_b) if concepts_b else None
+        if concept is None:
+            raise ValueError("Cannot create trial: no concepts available")
+        return [{
+            'trial_num': -1,  # Placeholder, will be set globally later
+            'concept': concept,
+            'category': category
+        }]
     
     # Calculate how many times each concept should appear in this block
     # This ensures stratification across the entire experiment

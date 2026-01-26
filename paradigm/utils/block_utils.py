@@ -3,34 +3,131 @@ Block folder management utilities.
 
 Handles detection of existing block folders, generation of next block number,
 and integration with randomization protocol.
+
+Subject folder structure:
+  data/results/sub-{participant_id}_{timestamp}/
+    Block_0000/
+    Block_0001/
+    ...
+    sub-{participant_id}_{timestamp}_randomization_protocol.json
 """
 
 import re
 from pathlib import Path
 from typing import Optional, Tuple, List, Dict, Any
+from datetime import datetime
 
 
-def find_block_folders(results_dir: Path) -> List[Path]:
+def get_subject_folder(results_dir: Path, participant_id: str, timestamp: Optional[str] = None) -> Path:
     """
-    Find all Block_XXXX folders in results directory.
+    Get or create subject folder with timestamp.
+    
+    Format: sub-{participant_id}_{timestamp}
+    Example: sub-9999_20260126_160000
     
     Parameters
     ----------
     results_dir : Path
-        Results directory to search
+        Base results directory
+    participant_id : str
+        Participant identifier
+    timestamp : str, optional
+        Timestamp string (YYYYMMDD_HHMMSS). If None, uses current time.
+        
+    Returns
+    -------
+    Path
+        Path to subject folder
+    """
+    if timestamp is None:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    
+    folder_name = f"sub-{participant_id}_{timestamp}"
+    subject_folder = results_dir / folder_name
+    subject_folder.mkdir(parents=True, exist_ok=True)
+    
+    return subject_folder
+
+
+def find_subject_folders(results_dir: Path, participant_id: str) -> List[Path]:
+    """
+    Find all subject folders for a participant.
+    
+    Parameters
+    ----------
+    results_dir : Path
+        Base results directory
+    participant_id : str
+        Participant identifier
+        
+    Returns
+    -------
+    list
+        List of subject folder paths, sorted by timestamp (newest first)
+    """
+    if not results_dir.exists():
+        return []
+    
+    pattern = re.compile(rf'^sub-{re.escape(participant_id)}_\d{{8}}_\d{{6}}$')
+    subject_folders = []
+    
+    for item in results_dir.iterdir():
+        if item.is_dir() and pattern.match(item.name):
+            subject_folders.append(item)
+    
+    # Sort by timestamp (extract from folder name)
+    def extract_timestamp(folder_path: Path) -> str:
+        parts = folder_path.name.split('_')
+        if len(parts) >= 3:
+            return f"{parts[1]}_{parts[2]}"  # YYYYMMDD_HHMMSS
+        return ""
+    
+    subject_folders.sort(key=extract_timestamp, reverse=True)  # Newest first
+    
+    return subject_folders
+
+
+def get_latest_subject_folder(results_dir: Path, participant_id: str) -> Optional[Path]:
+    """
+    Get the most recent subject folder for a participant.
+    
+    Parameters
+    ----------
+    results_dir : Path
+        Base results directory
+    participant_id : str
+        Participant identifier
+        
+    Returns
+    -------
+    Path or None
+        Most recent subject folder, or None if none exist
+    """
+    subject_folders = find_subject_folders(results_dir, participant_id)
+    return subject_folders[0] if subject_folders else None
+
+
+def find_block_folders(subject_folder: Path) -> List[Path]:
+    """
+    Find all Block_XXXX folders in subject folder.
+    
+    Parameters
+    ----------
+    subject_folder : Path
+        Subject folder to search
         
     Returns
     -------
     list of Path
         List of Block_XXXX folder paths, sorted by block number
     """
-    if not results_dir.exists():
+    if not subject_folder.exists():
         return []
     
     block_folders = []
     pattern = re.compile(r'^Block_(\d{4})$')
     
-    for item in results_dir.iterdir():
+    for item in subject_folder.iterdir():
         if item.is_dir() and pattern.match(item.name):
             block_folders.append(item)
     
@@ -40,7 +137,7 @@ def find_block_folders(results_dir: Path) -> List[Path]:
     return block_folders
 
 
-def get_next_block_number(results_dir: Path) -> int:
+def get_next_block_number(subject_folder: Path) -> int:
     """
     Determine the next block number based on existing Block_XXXX folders.
     
@@ -49,15 +146,15 @@ def get_next_block_number(results_dir: Path) -> int:
     
     Parameters
     ----------
-    results_dir : Path
-        Results directory to check
+    subject_folder : Path
+        Subject folder to check
         
     Returns
     -------
     int
         Next block number (0-indexed: 0, 1, 2, ...)
     """
-    block_folders = find_block_folders(results_dir)
+    block_folders = find_block_folders(subject_folder)
     
     if not block_folders:
         return 0  # No blocks exist, start with Block_0000
@@ -70,14 +167,14 @@ def get_next_block_number(results_dir: Path) -> int:
     return max_block_num + 1
 
 
-def get_block_folder_path(results_dir: Path, block_num: int) -> Path:
+def get_block_folder_path(subject_folder: Path, block_num: int) -> Path:
     """
     Get path for Block_XXXX folder given block number.
     
     Parameters
     ----------
-    results_dir : Path
-        Results directory
+    subject_folder : Path
+        Subject folder
     block_num : int
         Block number (0-indexed: 0, 1, 2, ...)
         
@@ -87,17 +184,17 @@ def get_block_folder_path(results_dir: Path, block_num: int) -> Path:
         Path to Block_XXXX folder
     """
     block_folder_name = f"Block_{block_num:04d}"
-    return results_dir / block_folder_name
+    return subject_folder / block_folder_name
 
 
-def ensure_block_folder(results_dir: Path, block_num: int) -> Path:
+def ensure_block_folder(subject_folder: Path, block_num: int) -> Path:
     """
     Ensure Block_XXXX folder exists, create if needed.
     
     Parameters
     ----------
-    results_dir : Path
-        Results directory
+    subject_folder : Path
+        Subject folder
     block_num : int
         Block number (0-indexed: 0, 1, 2, ...)
         
@@ -106,16 +203,15 @@ def ensure_block_folder(results_dir: Path, block_num: int) -> Path:
     Path
         Path to Block_XXXX folder (created if needed)
     """
-    block_folder = get_block_folder_path(results_dir, block_num)
+    block_folder = get_block_folder_path(subject_folder, block_num)
     block_folder.mkdir(parents=True, exist_ok=True)
     return block_folder
 
 
 def save_randomization_protocol(
     randomization_data: Dict[str, Any],
-    output_dir: Path,
-    participant_id: str,
-    session_id: int
+    subject_folder: Path,
+    participant_id: str
 ) -> Path:
     """
     Save randomization protocol (cross-block instructions/programs, clue patterns).
@@ -130,12 +226,10 @@ def save_randomization_protocol(
         - 'all_blocks_trials': List of trial sequences (one per block)
         - 'config': Configuration used
         - 'metadata': Additional metadata
-    output_dir : Path
-        Output directory (results folder)
+    subject_folder : Path
+        Subject folder
     participant_id : str
         Participant identifier
-    session_id : int
-        Session number
         
     Returns
     -------
@@ -145,15 +239,24 @@ def save_randomization_protocol(
     import json
     from datetime import datetime
     
-    # Create filename
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"sub-{participant_id}_ses-{session_id}_{timestamp}_randomization_protocol.json"
-    filepath = output_dir / filename
+    # Extract timestamp from folder name or use current time
+    folder_name = subject_folder.name
+    if '_' in folder_name:
+        parts = folder_name.split('_')
+        if len(parts) >= 3:
+            timestamp = f"{parts[1]}_{parts[2]}"  # YYYYMMDD_HHMMSS
+        else:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    else:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    
+    # Create filename (no session ID)
+    filename = f"sub-{participant_id}_{timestamp}_randomization_protocol.json"
+    filepath = subject_folder / filename
     
     # Add metadata
     randomization_data['saved_at'] = datetime.now().isoformat()
     randomization_data['participant_id'] = participant_id
-    randomization_data['session_id'] = session_id
     
     # Save to JSON
     with open(filepath, 'w') as f:
@@ -163,21 +266,18 @@ def save_randomization_protocol(
 
 
 def load_randomization_protocol(
-    output_dir: Path,
-    participant_id: str,
-    session_id: int
+    subject_folder: Path,
+    participant_id: str
 ) -> Optional[Dict[str, Any]]:
     """
-    Load the most recent randomization protocol for a participant/session.
+    Load the randomization protocol from subject folder.
     
     Parameters
     ----------
-    output_dir : Path
-        Results directory
+    subject_folder : Path
+        Subject folder
     participant_id : str
         Participant identifier
-    session_id : int
-        Session number
         
     Returns
     -------
@@ -186,9 +286,9 @@ def load_randomization_protocol(
     """
     import json
     
-    # Find all randomization protocol files for this participant/session
-    pattern = f"sub-{participant_id}_ses-{session_id}_*_randomization_protocol.json"
-    protocol_files = list(output_dir.glob(pattern))
+    # Find randomization protocol file in subject folder
+    pattern = f"sub-{participant_id}_*_randomization_protocol.json"
+    protocol_files = list(subject_folder.glob(pattern))
     
     if not protocol_files:
         return None

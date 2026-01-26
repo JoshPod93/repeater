@@ -38,6 +38,7 @@ ENV/
 
 # Data files
 data/results/
+sim_data/sim_results/
 *.npy
 *.npz
 *.h5
@@ -67,6 +68,7 @@ files/
 
 # Keep structure but ignore contents
 !data/results/.gitkeep
+!sim_data/sim_results/.gitkeep
 
 # Security - never commit tokens or credentials
 *.token

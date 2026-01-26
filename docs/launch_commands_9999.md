@@ -7,38 +7,13 @@ Run these commands sequentially in your terminal:
 ### Block 1:
 ```bash
 conda activate repeat
-python paradigm/semantic_paradigm_simulation.py --participant-id 9999 --session 1 --block 1
+python paradigm/semantic_paradigm_simulation.py --participant-id 9999 --block 1
 ```
 
 ### Block 2:
 ```bash
 conda activate repeat
-python paradigm/semantic_paradigm_simulation.py --participant-id 9999 --session 1 --block 2
-```
-
-## Using Launch Script (Bash/Git Bash)
-
-If you're using Git Bash or Linux/Mac:
-
-```bash
-cd c:/Users/jp24194/Desktop/repeater
-./paradigm/scripts/launch_simulation.sh 2
-```
-
-Note: The launch script uses `sim_9999` by default. To use `9999`, modify the script or use individual commands above.
-
-## PowerShell Commands (Windows)
-
-### Block 1:
-```powershell
-conda activate repeat
-python paradigm/semantic_paradigm_simulation.py --participant-id 9999 --session 1 --block 1
-```
-
-### Block 2:
-```powershell
-conda activate repeat
-python paradigm/semantic_paradigm_simulation.py --participant-id 9999 --session 1 --block 2
+python paradigm/semantic_paradigm_simulation.py --participant-id 9999 --block 2
 ```
 
 ## Expected Configuration
@@ -51,16 +26,34 @@ Based on current config:
 - **Concepts:** 10 items (5 per category)
 - **Beeps per trial:** 8 (default)
 
+## Folder Structure
+
+All subject data is organized in a single timestamped folder:
+
+```
+data/results/
+  sub-9999_{timestamp}/
+    ├── Block_0000/              (block 1 data)
+    │   ├── sub-9999_{timestamp}_trials.json
+    │   └── sub-9999_{timestamp}_trials.npy
+    ├── Block_0001/              (block 2 data)
+    │   ├── sub-9999_{timestamp}_trials.json
+    │   └── sub-9999_{timestamp}_trials.npy
+    ├── sub-9999_{timestamp}_randomization_protocol.json  (ground truth)
+    └── sub-9999_{timestamp}_triggers.csv                (all triggers)
+```
+
 ## What to Review After Running
 
 1. **Foldering:**
-   - Check `data/results/Block_0000/` (block 1)
-   - Check `data/results/Block_0001/` (block 2)
-   - Check `data/results/sub-9999_ses-1_*_randomization_protocol.json`
+   - Check `data/results/sub-9999_{timestamp}/` exists
+   - Verify `Block_0000/` and `Block_0001/` folders created
+   - Check `*_randomization_protocol.json` in subject folder
+   - Check `*_triggers.csv` in subject folder (not separate triggers folder)
 
 2. **Pathing:**
-   - Verify data files saved correctly
-   - Check trigger CSV: `data/triggers/sub-9999_ses-1_*_triggers.csv`
+   - Verify all files saved in correct locations
+   - Trigger CSV should be in subject folder, not `data/triggers/`
 
 3. **Randomization Protocol:**
    - Load protocol JSON and verify trial sequences
@@ -69,7 +62,7 @@ Based on current config:
 
 4. **Trigger vs Ground Truth:**
    ```bash
-   python scripts/validate_triggers.py --participant-id 9999 --session 1
+   python scripts/validate_triggers.py --participant-id 9999
    ```
 
 5. **Stimuli Presentation:**
@@ -84,17 +77,18 @@ For faster testing, use `--n-beeps 3`:
 
 ```bash
 conda activate repeat
-python paradigm/semantic_paradigm_simulation.py --participant-id 9999 --session 1 --block 1 --n-beeps 3
+python paradigm/semantic_paradigm_simulation.py --participant-id 9999 --block 1 --n-beeps 3
 ```
 
 ## Verification Checklist
 
 After running both blocks:
 
+- [ ] Subject folder created: `sub-9999_{timestamp}/`
 - [ ] Block folders created: `Block_0000/`, `Block_0001/`
-- [ ] Randomization protocol saved: `*_randomization_protocol.json`
-- [ ] Trigger CSV created: `*_triggers.csv`
-- [ ] Data files saved: `*_trials.json`, `*_trials.npy`
-- [ ] Validation passes: `python scripts/validate_triggers.py --participant-id 9999 --session 1`
+- [ ] Randomization protocol saved: `*_randomization_protocol.json` (in subject folder)
+- [ ] Trigger CSV created: `*_triggers.csv` (in subject folder, not separate triggers folder)
+- [ ] Data files saved: `*_trials.json`, `*_trials.npy` (in block folders)
+- [ ] Validation passes: `python scripts/validate_triggers.py --participant-id 9999`
 - [ ] Trial counts match: 10 trials per block = 20 total
 - [ ] Concept stratification: 2 trials per concept-item per block

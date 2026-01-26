@@ -12,20 +12,17 @@ from typing import Dict, List, Any, Optional
 
 
 def create_metadata(participant_id: str,
-                   session_id: int,
                    config: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Create metadata dictionary for experiment session.
+    Create metadata dictionary for experiment.
     
     Parameters
     ----------
     participant_id : str
         Participant identifier
-    session_id : int
-        Session number
     config : dict
         Configuration dictionary
-    
+        
     Returns
     -------
     dict
@@ -33,7 +30,6 @@ def create_metadata(participant_id: str,
     """
     return {
         'participant_id': participant_id,
-        'session_id': session_id,
         'date': datetime.now().strftime('%Y-%m-%d'),
         'time': datetime.now().strftime('%H:%M:%S'),
         'concepts_category_a': config.get('concepts_category_a', []),
@@ -79,9 +75,8 @@ def create_trial_data_dict(trial_num: int,
 
 def save_trial_data(metadata: Dict[str, Any],
                    trial_data: List[Dict[str, Any]],
-                   output_dir: Path,
+                   subject_folder: Path,
                    participant_id: str,
-                   session_id: int,
                    block_folder: Optional[Path] = None,
                    save_json: bool = True,
                    save_numpy: bool = True) -> Dict[str, Path]:
@@ -89,7 +84,7 @@ def save_trial_data(metadata: Dict[str, Any],
     Save trial data to files.
     
     Saves data in both JSON (human-readable) and NumPy (analysis-friendly) formats.
-    If block_folder is provided, saves to that folder. Otherwise saves to output_dir.
+    If block_folder is provided, saves to that folder. Otherwise saves to subject_folder.
     
     Parameters
     ----------
@@ -97,14 +92,12 @@ def save_trial_data(metadata: Dict[str, Any],
         Experiment metadata
     trial_data : list
         List of trial data dictionaries
-    output_dir : Path
-        Output directory (base results folder)
+    subject_folder : Path
+        Subject folder (e.g., sub-9999_20260126_160000)
     participant_id : str
         Participant identifier
-    session_id : int
-        Session number
     block_folder : Path, optional
-        Block folder path (e.g., Block_0000). If None, saves directly to output_dir
+        Block folder path (e.g., Block_0000). If None, saves directly to subject_folder
     save_json : bool
         Whether to save JSON file
     save_numpy : bool
@@ -115,13 +108,23 @@ def save_trial_data(metadata: Dict[str, Any],
     dict
         Dictionary with paths to saved files ('json' and/or 'numpy')
     """
-    # Use block_folder if provided, otherwise use output_dir
-    save_dir = block_folder if block_folder else output_dir
+    # Use block_folder if provided, otherwise use subject_folder
+    save_dir = block_folder if block_folder else subject_folder
     save_dir.mkdir(parents=True, exist_ok=True)
     
-    # Generate filename with participant info
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    base_filename = f"sub-{participant_id}_ses-{session_id}_{timestamp}"
+    # Extract timestamp from subject folder name
+    folder_name = subject_folder.name
+    if '_' in folder_name:
+        parts = folder_name.split('_')
+        if len(parts) >= 3:
+            timestamp = f"{parts[1]}_{parts[2]}"  # YYYYMMDD_HHMMSS
+        else:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    else:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    
+    # Generate filename (no session ID)
+    base_filename = f"sub-{participant_id}_{timestamp}"
     
     saved_files = {}
     
@@ -204,9 +207,8 @@ def print_experiment_summary(metadata: Dict[str, Any],
     print("EXPERIMENT SUMMARY")
     print("="*60)
     print(f"Participant: {metadata['participant_id']}")
-    print(f"Session: {metadata['session_id']}")
     print(f"Total duration: {total_duration:.2f}s ({total_duration/60:.2f}min)")
-    print(f"Trials completed: {len(trial_data)}/{metadata['n_trials']}")
+    print(f"Trials completed: {len(trial_data)}/{metadata.get('n_trials', len(trial_data))}")
     
     if saved_files:
         print("\nData saved to:")

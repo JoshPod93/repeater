@@ -1,16 +1,16 @@
 #!/bin/bash
 
 # Launch semantic_paradigm_simulation.py for multiple blocks
-# Each execution runs ONE block only
-#
-# To run this script from the paradigm folder in Git Bash:
+# Each execution runs ONE block only, automatically detecting the next block.
+
+# To run this script from the project root in Git Bash:
 #
 # cd /c/Users/jp24194/Desktop/repeater
 # ./paradigm/scripts/launch_simulation.sh
 #
 # Or make it executable and run directly:
 #   chmod +x paradigm/scripts/launch_simulation.sh
-#   ./paradigm/scripts/launch_simulation.sh
+#   ./paradigm/scripts/launch_simulation.sh [PARTICIPANT_ID] [NUMBER_OF_BEEPS_PER_TRIAL]
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -39,50 +39,55 @@ fi
 
 echo "Conda environment activated"
 
-# Number of blocks to run (default: 3)
-TOTAL_BLOCKS=${1:-3}
+# Participant ID (default: sim_9999)
+PARTICIPANT_ID=${1:-sim_9999}
+# Number of beeps per trial (default: 8)
+N_BEEPS=${2:-8}
 
 echo "=========================================="
-echo "Starting $TOTAL_BLOCKS simulation blocks"
-echo "Each execution runs ONE block only"
+echo "Starting simulation blocks for participant: $PARTICIPANT_ID"
+echo "Beeps per trial: $N_BEEPS"
+echo "Each execution runs ONE block only (auto-detects next block)"
 echo "=========================================="
 
-for block_num in $(seq 1 $TOTAL_BLOCKS); do
+# Run blocks sequentially - each execution auto-detects the next block
+# We'll run until we get an error or the script indicates all blocks are done
+block_count=1
+while true; do
     echo ""
     echo "=========================================="
-    echo "Block $block_num/$TOTAL_BLOCKS"
+    echo "Block $block_count"
     echo "=========================================="
     
     echo "Python location: $(which python)"
     echo "Python version: $(python --version)"
     echo "Current directory: $(pwd)"
-    echo "Starting simulation for block $block_num..."
+    echo "Starting simulation for block $block_count (auto-detected)..."
     echo ""
     echo "WARNING: Please be patient - it can take a moment before the simulation launches"
     echo ""
     
-    # Run the simulation for this block only
+    # Run the simulation - it will auto-detect the next block
     # Use -u flag for unbuffered output so we see real-time progress
-    python -u paradigm/semantic_paradigm_simulation.py --block $block_num --participant-id sim_9999
+    python -u paradigm/semantic_paradigm_simulation.py --participant-id "$PARTICIPANT_ID" --n-beeps $N_BEEPS
     EXIT_CODE=$?
     
     # Check if the block was successful
     if [ $EXIT_CODE -eq 0 ]; then
-        echo "Block $block_num completed successfully"
+        echo "Block $block_count completed successfully"
+        block_count=$((block_count + 1))
     else
-        echo "Block $block_num failed with exit code: $EXIT_CODE"
+        echo "Block $block_count failed with exit code: $EXIT_CODE"
         echo "Stopping execution..."
         exit 1
     fi
     
-    # Brief pause between blocks (except after last block)
-    if [ $block_num -lt $TOTAL_BLOCKS ]; then
-        echo "Pausing 5 seconds before next block..."
-        sleep 5
-    fi
+    # Brief pause between blocks
+    echo "Pausing 2 seconds before checking for next block..."
+    sleep 2
 done
 
 echo ""
 echo "=========================================="
-echo "All $TOTAL_BLOCKS simulation blocks completed!"
+echo "All simulation blocks completed!"
 echo "=========================================="
