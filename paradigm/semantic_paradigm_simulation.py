@@ -83,13 +83,26 @@ def simulate_visualization_period(
     beep_timestamps.append(timestamp)
     
     # Visualization period with beeps (fixation stays on screen)
+    # Use unique trigger codes for each beep (31-38)
+    beep_trigger_codes = [
+        TRIGGER_CODES['beep_1'],
+        TRIGGER_CODES['beep_2'],
+        TRIGGER_CODES['beep_3'],
+        TRIGGER_CODES['beep_4'],
+        TRIGGER_CODES['beep_5'],
+        TRIGGER_CODES['beep_6'],
+        TRIGGER_CODES['beep_7'],
+        TRIGGER_CODES['beep_8']
+    ]
+    
     for beep_idx in range(n_beeps):
         # Redraw fixation (keeps it visible during beeps)
         display.show_fixation()
         
-        # Send beep trigger
+        # Use unique trigger code for each beep
+        trigger_code = beep_trigger_codes[beep_idx]
         timestamp, _ = trigger_handler.send_trigger(
-            TRIGGER_CODES['beep'],
+            trigger_code,
             event_name=f'beep_{beep_idx + 1}_{n_beeps}'
         )
         beep_timestamps.append(timestamp)
@@ -97,9 +110,10 @@ def simulate_visualization_period(
         # Play beep using utility function
         play_beep(beep_sound, stop_first=True)
         
-        print(f"  [SIM] Beep {beep_idx + 1}/{n_beeps} at {timestamp:.3f}s")
+        print(f"  [SIM] Beep {beep_idx + 1}/{n_beeps} (trigger {trigger_code}) at {timestamp:.3f}s")
         
         # Fixed interval - NO JITTER (critical for rhythmic protocol)
+        # 0.8s interval provides sufficient buffer time between triggers
         core.wait(beep_interval)
     
     return beep_timestamps

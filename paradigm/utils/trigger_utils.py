@@ -222,14 +222,31 @@ class TriggerHandler:
 
 
 # Standard trigger codes for semantic visualization paradigm
+# Organized with spacing to avoid buffer issues and allow expansion
 TRIGGER_CODES = {
+    # Trial-level events
     'trial_start': 2,
     'fixation': 1,
+    
+    # Concept presentation (category-specific)
     'concept_category_a': 10,
     'concept_category_b': 20,
+    
+    # Beep sequence (unique code for each beep to allow detailed analysis)
     'beep_start': 30,
-    'beep': 31,
+    'beep_1': 31,  # First beep
+    'beep_2': 32,  # Second beep
+    'beep_3': 33,  # Third beep
+    'beep_4': 34,  # Fourth beep
+    'beep_5': 35,  # Fifth beep
+    'beep_6': 36,  # Sixth beep
+    'beep_7': 37,  # Seventh beep
+    'beep_8': 38,  # Eighth beep
+    
+    # Trial completion
     'trial_end': 40,
+    
+    # Block-level events
     'block_start': 50,
     'block_end': 51
 }

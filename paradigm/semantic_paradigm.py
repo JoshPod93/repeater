@@ -194,12 +194,26 @@ class SemanticVisualizationExperiment:
         n_beeps = self.config.get('N_BEEPS', 8)
         beep_interval = self.config.get('BEEP_INTERVAL', 0.8)  # NO JITTER - critical rhythmic timing
         
+        # Beep trigger codes: 31-38 for beeps 1-8
+        beep_trigger_codes = [
+            TRIGGER_CODES['beep_1'],
+            TRIGGER_CODES['beep_2'],
+            TRIGGER_CODES['beep_3'],
+            TRIGGER_CODES['beep_4'],
+            TRIGGER_CODES['beep_5'],
+            TRIGGER_CODES['beep_6'],
+            TRIGGER_CODES['beep_7'],
+            TRIGGER_CODES['beep_8']
+        ]
+        
         for beep_idx in range(n_beeps):
             # Redraw fixation (keeps it visible during beeps)
             self.display.show_fixation()
             
+            # Use unique trigger code for each beep
+            trigger_code = beep_trigger_codes[beep_idx]
             timestamp, _ = self.trigger_handler.send_trigger(
-                TRIGGER_CODES['beep'],
+                trigger_code,
                 event_name=f'beep_{beep_idx + 1}_{n_beeps}'
             )
             trial_data['timestamps']['beeps'].append(timestamp)
@@ -207,8 +221,11 @@ class SemanticVisualizationExperiment:
             # Play beep using utility function
             play_beep(self.beep, stop_first=True)
             
-            print(f"  Beep {beep_idx + 1}/{n_beeps} at {timestamp:.3f}s")
-            core.wait(beep_interval)  # Fixed interval - critical for rhythmic protocol
+            print(f"  Beep {beep_idx + 1}/{n_beeps} (trigger {trigger_code}) at {timestamp:.3f}s")
+            
+            # Fixed interval - critical for rhythmic protocol
+            # 0.8s interval provides sufficient buffer time between triggers
+            core.wait(beep_interval)
         
         # 4. REST PERIOD
         self.display.clear_screen()
