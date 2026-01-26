@@ -22,6 +22,7 @@ from paradigm.utils import (
     TriggerHandler, TRIGGER_CODES, create_trigger_handler,
     get_trial_start_code, get_trial_end_code,
     get_block_start_code, get_block_end_code,
+    get_beep_code, get_beep_codes,
     DisplayManager, create_window,
     create_metadata, create_trial_data_dict, save_trial_data, print_experiment_summary,
     create_balanced_sequence, validate_trial_sequence,
@@ -197,23 +198,14 @@ class SemanticVisualizationExperiment:
         n_beeps = self.config.get('N_BEEPS', 8)
         beep_interval = self.config.get('BEEP_INTERVAL', 0.8)  # NO JITTER - critical rhythmic timing
         
-        # Beep trigger codes: 31-38 for beeps 1-8
-        beep_trigger_codes = [
-            TRIGGER_CODES['beep_1'],
-            TRIGGER_CODES['beep_2'],
-            TRIGGER_CODES['beep_3'],
-            TRIGGER_CODES['beep_4'],
-            TRIGGER_CODES['beep_5'],
-            TRIGGER_CODES['beep_6'],
-            TRIGGER_CODES['beep_7'],
-            TRIGGER_CODES['beep_8']
-        ]
+        # Get beep trigger codes dynamically based on n_beeps
+        beep_trigger_codes = get_beep_codes(n_beeps, max_beeps=8)
         
         for beep_idx in range(n_beeps):
             # Redraw fixation (keeps it visible during beeps)
             self.display.show_fixation()
             
-            # Use unique trigger code for each beep
+            # Use dynamic beep code
             trigger_code = beep_trigger_codes[beep_idx]
             timestamp, _ = self.trigger_handler.send_trigger(
                 trigger_code,

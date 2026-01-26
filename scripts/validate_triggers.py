@@ -274,7 +274,7 @@ def extract_concept_sequence_from_triggers(triggers: List[Dict[str, str]]) -> Li
     return concept_sequence
 
 
-def analyze_trial_structure(trials: Dict[int, List[Dict[str, str]]]) -> Dict[str, any]:
+def analyze_trial_structure(trials: Dict[int, List[Dict[str, str]]], max_beeps: int = 8) -> Dict[str, any]:
     """
     Analyze trial structure and detect issues.
     
@@ -305,8 +305,11 @@ def analyze_trial_structure(trials: Dict[int, List[Dict[str, str]]]) -> Dict[str
         # Check for concept
         has_concept = any(int(t.get('trigger_code', 0)) in [10, 20] for t in trial_triggers)
         
-        # Check for beeps
-        beep_count = sum(1 for t in trial_triggers if 31 <= int(t.get('trigger_code', 0)) <= 38)
+        # Check for beeps (dynamic range based on max beeps)
+        # Beep codes: 31-38 for beeps 1-8, but we check dynamically
+        max_beeps = 8  # Maximum supported
+        beep_count = sum(1 for t in trial_triggers 
+                        if 31 <= int(t.get('trigger_code', 0)) <= (30 + max_beeps))
         
         if has_start and has_end:
             analysis['complete_trials'] += 1
@@ -419,7 +422,10 @@ def validate_trigger_log_against_protocol(
         trials = parcel_triggers_into_trials(triggers)
         blocks = parcel_triggers_into_blocks(triggers)
         
-        trial_analysis = analyze_trial_structure(trials)
+        # Get max_beeps from protocol or use default
+        max_beeps = protocol.get('config', {}).get('N_BEEPS', 8)
+        
+        trial_analysis = analyze_trial_structure(trials, max_beeps=max_beeps)
         block_analysis = analyze_block_structure(blocks)
         
         analysis['trials'] = trial_analysis

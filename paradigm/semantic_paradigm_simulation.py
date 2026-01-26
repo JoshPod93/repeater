@@ -28,6 +28,7 @@ from paradigm.utils import (
     TriggerHandler, TRIGGER_CODES, create_trigger_handler,
     get_trial_start_code, get_trial_end_code,
     get_block_start_code, get_block_end_code,
+    get_beep_code, get_beep_codes,
     DisplayManager, create_window,
     create_metadata, create_trial_data_dict, save_trial_data, print_experiment_summary,
     create_balanced_sequence, validate_trial_sequence, create_stratified_block_sequence,
@@ -87,23 +88,14 @@ def simulate_visualization_period(
     beep_timestamps.append(timestamp)
     
     # Visualization period with beeps (fixation stays on screen)
-    # Use unique trigger codes for each beep (31-38)
-    beep_trigger_codes = [
-        TRIGGER_CODES['beep_1'],
-        TRIGGER_CODES['beep_2'],
-        TRIGGER_CODES['beep_3'],
-        TRIGGER_CODES['beep_4'],
-        TRIGGER_CODES['beep_5'],
-        TRIGGER_CODES['beep_6'],
-        TRIGGER_CODES['beep_7'],
-        TRIGGER_CODES['beep_8']
-    ]
+    # Get beep trigger codes dynamically based on n_beeps
+    beep_trigger_codes = get_beep_codes(n_beeps, max_beeps=8)
     
     for beep_idx in range(n_beeps):
         # Redraw fixation (keeps it visible during beeps)
         display.show_fixation()
         
-        # Use unique trigger code for each beep
+        # Use dynamic beep code
         trigger_code = beep_trigger_codes[beep_idx]
         timestamp, _ = trigger_handler.send_trigger(
             trigger_code,
@@ -258,6 +250,7 @@ def run_experiment_simulation(
     session_id: int = 1,
     config_path: Optional[Path] = None,
     n_trials: Optional[int] = None,
+    n_beeps: Optional[int] = None,
     block_num: Optional[int] = None,
     verbose: bool = True
 ) -> Dict[str, any]:
@@ -712,6 +705,13 @@ Examples:
     )
     
     parser.add_argument(
+        '--n-beeps', '--beeps',
+        type=int,
+        default=None,
+        help='Number of beeps per trial (default: from config, max: 8). Useful for rapid testing (e.g., --n-beeps 3)'
+    )
+    
+    parser.add_argument(
         '--verbose', '-v',
         action='store_true',
         help='Enable verbose output'
@@ -729,6 +729,7 @@ Examples:
             session_id=args.session,
             config_path=config_path,
             n_trials=args.n_trials,
+            n_beeps=args.n_beeps,
             block_num=args.block,
             verbose=args.verbose
         )

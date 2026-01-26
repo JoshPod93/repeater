@@ -56,7 +56,9 @@ from .trigger_utils import (
     get_trial_start_code,
     get_trial_end_code,
     get_block_start_code,
-    get_block_end_code
+    get_block_end_code,
+    get_beep_code,
+    get_beep_codes
 )
 
 __all__ = [
@@ -77,6 +79,8 @@ __all__ = [
     'get_trial_end_code',
     'get_block_start_code',
     'get_block_end_code',
+    'get_beep_code',
+    'get_beep_codes',
     # Display utilities
     'create_window',
     'create_fixation_cross',

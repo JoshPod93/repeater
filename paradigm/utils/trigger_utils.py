@@ -7,7 +7,7 @@ Includes CSV mirror logging for trigger verification.
 """
 
 from psychopy import parallel, core
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from pathlib import Path
 import csv
 import logging
@@ -318,6 +318,51 @@ def get_block_start_code(block_num: int) -> int:
     return 150 + block_num
 
 
+def get_beep_code(beep_num: int, max_beeps: int = 8) -> int:
+    """
+    Get trigger code for a specific beep number.
+    
+    Beep N code = 30 + N (where N is 1-indexed)
+    Range: 31-38 for beeps 1-8 (supports up to 8 beeps)
+    
+    Parameters
+    ----------
+    beep_num : int
+        Beep number (1-indexed: 1, 2, 3, ...)
+    max_beeps : int
+        Maximum number of beeps supported (default: 8)
+        
+    Returns
+    -------
+    int
+        Trigger code for the beep
+    """
+    if beep_num < 1 or beep_num > max_beeps:
+        raise ValueError(f"Beep number must be between 1 and {max_beeps}, got {beep_num}")
+    return 30 + beep_num
+
+
+def get_beep_codes(n_beeps: int, max_beeps: int = 8) -> List[int]:
+    """
+    Get list of trigger codes for N beeps.
+    
+    Parameters
+    ----------
+    n_beeps : int
+        Number of beeps needed
+    max_beeps : int
+        Maximum number of beeps supported (default: 8)
+        
+    Returns
+    -------
+    list
+        List of trigger codes for beeps 1 through n_beeps
+    """
+    if n_beeps < 1 or n_beeps > max_beeps:
+        raise ValueError(f"Number of beeps must be between 1 and {max_beeps}, got {n_beeps}")
+    return [get_beep_code(i, max_beeps) for i in range(1, n_beeps + 1)]
+
+
 def get_block_end_code(block_num: int) -> int:
     """
     Get unique trigger code for block end.
@@ -335,6 +380,9 @@ def get_block_end_code(block_num: int) -> int:
     int
         Trigger code for block end
     """
+    if block_num < 1 or block_num > 9:
+        raise ValueError(f"Block number must be between 1 and 9, got {block_num}")
+    return 250 + block_num
     if block_num < 1 or block_num > 9:
         raise ValueError(f"Block number must be between 1 and 9, got {block_num}")
     return 250 + block_num
