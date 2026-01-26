@@ -22,7 +22,8 @@ from paradigm.utils import (
     TriggerHandler, TRIGGER_CODES, create_trigger_handler,
     DisplayManager, create_window,
     create_metadata, create_trial_data_dict, save_trial_data, print_experiment_summary,
-    create_balanced_sequence, validate_trial_sequence
+    create_balanced_sequence, validate_trial_sequence,
+    create_beep_sound, play_beep
 )
 
 
@@ -85,21 +86,15 @@ class SemanticVisualizationExperiment:
         self.clock = core.Clock()
         self.experiment_clock = core.Clock()
         
-        # Create audio stimulus
-        try:
-            # Try creating sound with frequency
-            self.beep = sound.Sound(
-                value=self.config.get('BEEP_FREQUENCY', 440),
-                secs=self.config.get('BEEP_DURATION', 0.1)
-            )
-        except Exception as e:
-            # Fallback to note-based sound
-            try:
-                self.beep = sound.Sound('A', octave=4, secs=self.config.get('BEEP_DURATION', 0.1))
-            except Exception as e2:
-                # Last resort: create minimal sound or None
-                print(f"Warning: Sound creation failed: {e}, {e2}")
-                self.beep = None
+        # Create audio stimulus using utility function
+        self.beep = create_beep_sound(
+            frequency=self.config.get('BEEP_FREQUENCY', 440),
+            duration=self.config.get('BEEP_DURATION', 0.1),
+            fallback_note='A',
+            octave=4
+        )
+        if self.beep is None:
+            print("Warning: Could not create beep sound. Audio will be silent.")
         
         # Data storage
         self.trial_data = []
@@ -163,9 +158,8 @@ class SemanticVisualizationExperiment:
             timestamp, _ = self.trigger_handler.send_trigger(TRIGGER_CODES['beep'])
             trial_data['timestamps']['beeps'].append(timestamp)
             
-            if self.beep is not None:
-                self.beep.stop()
-                self.beep.play()
+            # Play beep using utility function
+            play_beep(self.beep, stop_first=True)
             
             print(f"  Beep {beep_idx + 1}/{n_beeps} at {timestamp:.3f}s")
             core.wait(beep_interval)
@@ -200,9 +194,8 @@ class SemanticVisualizationExperiment:
             countdown = f'Visualizing... {n_beeps - beep_idx}'
             self.display.show_text(countdown, height=0.05, color='gray')
             
-            if self.beep is not None:
-                self.beep.stop()
-                self.beep.play()
+            # Play beep using utility function
+            play_beep(self.beep, stop_first=True)
             core.wait(beep_interval)
         
         # Rest

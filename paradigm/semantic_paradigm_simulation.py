@@ -28,7 +28,8 @@ from paradigm.utils import (
     TriggerHandler, TRIGGER_CODES, create_trigger_handler,
     DisplayManager, create_window,
     create_metadata, create_trial_data_dict, save_trial_data, print_experiment_summary,
-    create_balanced_sequence, validate_trial_sequence
+    create_balanced_sequence, validate_trial_sequence,
+    create_beep_sound, play_beep
 )
 
 
@@ -93,10 +94,8 @@ def simulate_visualization_period(
         timestamp, _ = trigger_handler.send_trigger(TRIGGER_CODES['beep'])
         beep_timestamps.append(timestamp)
         
-        # Play beep (if sound available)
-        if beep_sound is not None:
-            beep_sound.stop()
-            beep_sound.play()
+        # Play beep using utility function
+        play_beep(beep_sound, stop_first=True)
         
         print(f"  [SIM] Beep {beep_idx + 1}/{n_beeps} at {timestamp:.3f}s")
         
@@ -288,24 +287,17 @@ def run_experiment_simulation(
     clock = core.Clock()
     experiment_clock = core.Clock()
     
-    # Create audio stimulus
-    try:
-        # Try creating sound with frequency
-        beep_sound = sound.Sound(
-            value=config.get('BEEP_FREQUENCY', 440),
-            secs=config.get('BEEP_DURATION', 0.1)
-        )
+    # Create audio stimulus using utility function
+    beep_sound = create_beep_sound(
+        frequency=config.get('BEEP_FREQUENCY', 440),
+        duration=config.get('BEEP_DURATION', 0.1),
+        fallback_note='A',
+        octave=4
+    )
+    if beep_sound is not None:
         print(f"[AUDIO] Beep sound created: {config.get('BEEP_FREQUENCY', 440)} Hz")
-    except Exception as e:
-        # Fallback to note-based sound
-        try:
-            beep_sound = sound.Sound('A', octave=4, secs=config.get('BEEP_DURATION', 0.1))
-            print(f"[AUDIO] Beep sound created using note 'A' (fallback)")
-        except Exception as e2:
-            # Last resort: create minimal sound
-            print(f"[WARNING] Sound creation failed: {e}, {e2}")
-            print("[WARNING] Continuing without audio - beeps will be silent")
-            beep_sound = None
+    else:
+        print("[WARNING] Could not create beep sound. Audio will be silent.")
     
     # Data storage
     trial_data_list = []

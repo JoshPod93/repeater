@@ -34,6 +34,11 @@ from .randomization_utils import (
     shuffle_trials
 )
 
+from .audio_utils import (
+    create_beep_sound,
+    play_beep
+)
+
 __all__ = [
     # Trigger utilities
     'TriggerHandler',
@@ -56,5 +61,8 @@ __all__ = [
     'create_balanced_sequence',
     'create_date_seeded_sequence',
     'validate_trial_sequence',
-    'shuffle_trials'
+    'shuffle_trials',
+    # Audio utilities
+    'create_beep_sound',
+    'play_beep'
 ]

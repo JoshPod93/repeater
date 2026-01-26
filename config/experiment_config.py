@@ -137,10 +137,10 @@ Your task: VISUALIZE each concept as vividly as possible.
 - Imagine its appearance, shape, color
 - Think about its characteristics
 
-A series of beeps will play during visualization.
-Use them to maintain steady focus.
+After the word disappears, a rhythm will be marked with beeps.
+Each beep is a cue to perform the same visualization again.
 
-Try to keep your visualization consistent throughout the beeps.
+Visualize the concept each time you hear a beep.
 
 Press SPACE to begin.
 """
