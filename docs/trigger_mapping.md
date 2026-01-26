@@ -9,6 +9,7 @@ This document provides a complete mapping of trigger codes to event names for th
 | Event Name | Code | Hex | Binary | Description |
 |------------|------|-----|--------|-------------|
 | `fixation` | 1 | 0x1 | 0b1 | Fixation cross appears |
+| `trial_start` | 2 | 0x2 | 0b10 | Trial begins |
 | `concept_category_a` | 10 | 0xa | 0b1010 | Concept word from Category A displayed |
 | `concept_category_b` | 20 | 0x14 | 0b10100 | Concept word from Category B displayed |
 | `beep_start` | 30 | 0x1e | 0b11110 | Start of beep sequence |
@@ -19,8 +20,8 @@ This document provides a complete mapping of trigger codes to event names for th
 
 ## Statistics
 
-- **Total triggers:** 8
-- **Unique codes:** 8 (no overlaps)
+- **Total triggers:** 9
+- **Unique codes:** 9 (no overlaps)
 - **Code range:** 1 - 51
 - **Available range:** 0-255 (8-bit parallel port)
 
@@ -28,7 +29,7 @@ This document provides a complete mapping of trigger codes to event names for th
 
 Codes are organized in groups of 10 for easy identification:
 
-- **1-9:** Trial events (fixation)
+- **1-9:** Trial events (fixation, trial_start)
 - **10-19:** Category A events
 - **20-29:** Category B events  
 - **30-39:** Beep sequence events
@@ -51,11 +52,12 @@ Each trigger appears exactly 2 times (once per file).
 
 ## Trigger Sequence Per Trial
 
-1. `fixation` (1) - Fixation cross appears
-2. `concept_category_a` (10) OR `concept_category_b` (20) - Concept word shown
-3. `beep_start` (30) - Beep sequence begins
-4. `beep` (31) × 8 - Individual beeps (one per repetition)
-5. `trial_end` (40) - Trial ends, rest period begins
+1. `trial_start` (2) - Trial begins
+2. `fixation` (1) - Fixation cross appears
+3. `concept_category_a` (10) OR `concept_category_b` (20) - Concept word shown
+4. `beep_start` (30) - Beep sequence begins
+5. `beep` (31) × 8 - Individual beeps (one per repetition)
+6. `trial_end` (40) - Trial ends, rest period begins
 
 ## Block-Level Triggers
 
