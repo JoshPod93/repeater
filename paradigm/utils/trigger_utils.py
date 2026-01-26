@@ -223,6 +223,7 @@ class TriggerHandler:
 
 # Standard trigger codes for semantic visualization paradigm
 TRIGGER_CODES = {
+    'trial_start': 2,
     'fixation': 1,
     'concept_category_a': 10,
     'concept_category_b': 20,

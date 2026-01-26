@@ -136,6 +136,13 @@ class SemanticVisualizationExperiment:
         
         print(f"\nTrial {trial_num}/{self.config.get('N_TRIALS', 20)}: {concept} (Category {category})")
         
+        # Send trial start trigger
+        timestamp, _ = self.trigger_handler.send_trigger(
+            TRIGGER_CODES['trial_start'],
+            event_name='trial_start'
+        )
+        trial_data['timestamps']['trial_start'] = timestamp
+        
         # 1. FIXATION (NO JITTER - important timing)
         self.display.show_fixation()
         timestamp, _ = self.trigger_handler.send_trigger(

@@ -152,6 +152,13 @@ def run_single_trial_simulation(
     
     print(f"\n[SIM] Trial {trial_num}/{total_trials}: {concept} (Category {category})")
     
+    # Send trial start trigger
+    timestamp, _ = trigger_handler.send_trigger(
+        TRIGGER_CODES['trial_start'],
+        event_name='trial_start'
+    )
+    trial_data['timestamps']['trial_start'] = timestamp
+    
     # 1. FIXATION (NO JITTER - important timing)
     display.show_fixation()
     timestamp, _ = trigger_handler.send_trigger(
