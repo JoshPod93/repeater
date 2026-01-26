@@ -265,25 +265,36 @@ class SemanticVisualizationExperiment:
     
     def run_experiment(self, n_practice_trials: int = 2):
         """Run the complete experiment."""
-        # Instructions
-        self.display.show_instructions()
-        keys = event.waitKeys(keyList=['space', 'escape'])
-        if 'escape' in keys:
-            self.quit()
-        core.wait(0.5)
+        # Show warning and countdown
+        warning_text = "WARNING: Experiment starting soon.\n\nPlease remain still and focus.\n\nPress ESCAPE to exit."
+        self.display.show_text(warning_text, height=0.05, color='yellow')
+        core.wait(2.0)  # Show warning for 2 seconds
+        
+        # Countdown from 3
+        for count in [3, 2, 1]:
+            # Check for escape during countdown
+            keys = event.getKeys(keyList=['escape'])
+            if 'escape' in keys:
+                print("\n[EXIT] Experiment terminated by user (Escape key)")
+                self.quit()
+                return
+            
+            self.display.show_text(f"Starting in {count}...", height=0.08, color='white')
+            core.wait(1.0)
         
         # Practice trials
         if n_practice_trials > 0:
-            self.display.show_text(
-                f"Let's do {n_practice_trials} practice trial(s) first.\n\nPress SPACE to continue.",
-                height=0.05
-            )
-            event.waitKeys(keyList=['space'])
-            
             concepts_a = self.config.get('CONCEPTS_CATEGORY_A', [])
             concepts_b = self.config.get('CONCEPTS_CATEGORY_B', [])
             
             for i in range(n_practice_trials):
+                # Check for escape
+                keys = event.getKeys(keyList=['escape'])
+                if 'escape' in keys:
+                    print("\n[EXIT] Experiment terminated by user (Escape key)")
+                    self.quit()
+                    return
+                
                 concept = concepts_a[0] if i % 2 == 0 else concepts_b[0]
                 category = 'A' if i % 2 == 0 else 'B'
                 self.run_practice_trial(concept, category)
@@ -294,13 +305,6 @@ class SemanticVisualizationExperiment:
                     jitter_range = self.config.get('JITTER_RANGE', 0.1)
                     wait_duration = jittered_wait(1.0, jitter_range) if use_jitter else 1.0
                     core.wait(wait_duration)
-        
-        # Ready screen
-        self.display.show_text(
-            "Practice complete!\n\nThe main experiment will now begin.\n\nPress SPACE when ready.",
-            height=0.05
-        )
-        event.waitKeys(keyList=['space'])
         
         # Create trial sequence
         trials = create_balanced_sequence(
@@ -355,15 +359,15 @@ class SemanticVisualizationExperiment:
             event_name='block_end'
         )
         
-        # End screen
-        self.display.show_text(
-            "Experiment Complete!\n\nThank you for participating.\n\nPress SPACE to finish.",
-            height=0.06
-        )
-        event.waitKeys(keyList=['space'])
-        
         # Save data
         self.save_data()
+        
+        # End screen (brief display, then auto-quit)
+        self.display.show_text(
+            "Experiment Complete!\n\nThank you for participating.",
+            height=0.06
+        )
+        core.wait(2.0)  # Show completion message for 2 seconds
         
         return self.trial_data
     

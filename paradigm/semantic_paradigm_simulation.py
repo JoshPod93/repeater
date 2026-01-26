@@ -341,19 +341,24 @@ def run_experiment_simulation(
         config=config
     )
     
-    # Show instructions
-    print("\n[INSTRUCTIONS] Displaying instructions...")
-    display.show_instructions()
-    print("  Press SPACE to continue or ESCAPE to exit")
+    # Show warning and countdown
+    print("\n[WARNING] Simulation starting soon...")
+    warning_text = "WARNING: Simulation starting soon.\n\nPress ESCAPE to exit."
+    display.show_text(warning_text, height=0.05, color='yellow')
+    core.wait(2.0)  # Show warning for 2 seconds
     
-    keys = event.waitKeys(keyList=['space', 'escape'])
-    if 'escape' in keys:
-        print("\n[EXIT] Simulation terminated by user")
-        win.close()
-        core.quit()
-        return {}
-    
-    core.wait(0.5)
+    # Countdown from 3
+    for count in [3, 2, 1]:
+        # Check for escape during countdown
+        keys = event.getKeys(keyList=['escape'])
+        if 'escape' in keys:
+            print("\n[EXIT] Simulation terminated by user")
+            win.close()
+            core.quit()
+            return {}
+        
+        display.show_text(f"Starting in {count}...", height=0.08, color='white')
+        core.wait(1.0)
     
     # Create trial sequence
     print("\n[SEQUENCE] Creating trial sequence...")
@@ -374,13 +379,6 @@ def run_experiment_simulation(
         print(f"[WARNING] Sequence validation: {error_msg}")
     else:
         print(f"[OK] Trial sequence validated: {len(trials)} trials")
-    
-    # Show ready screen
-    display.show_text(
-        "Simulation Mode\n\nThe experiment will now begin.\n\nPress SPACE when ready.",
-        height=0.05
-    )
-    event.waitKeys(keyList=['space'])
     
     # Start experiment
     print("\n" + "="*80)
@@ -434,13 +432,6 @@ def run_experiment_simulation(
     # Close trigger handler (saves CSV file)
     trigger_handler.close()
     
-    # End screen
-    display.show_text(
-        "Simulation Complete!\n\nAll functionality tested.\n\nPress SPACE to finish.",
-        height=0.06
-    )
-    event.waitKeys(keyList=['space'])
-    
     # Save data
     print("\n[DATA] Saving trial data...")
     output_dir = project_root / 'data' / 'results'
@@ -454,6 +445,13 @@ def run_experiment_simulation(
     )
     
     total_duration = experiment_clock.getTime()
+    
+    # End screen (brief display, then auto-quit)
+    display.show_text(
+        "Simulation Complete!\n\nAll functionality tested.",
+        height=0.06
+    )
+    core.wait(2.0)  # Show completion message for 2 seconds
     
     # Print summary
     print("\n" + "="*80)
