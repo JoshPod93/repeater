@@ -152,6 +152,107 @@ def validate_trial_sequence(trials: List[Dict[str, any]],
     return True, ""
 
 
+def create_stratified_block_sequence(
+    n_trials_per_block: int,
+    concepts_a: List[str],
+    concepts_b: List[str],
+    block_num: int,
+    participant_id: str,
+    session_id: int,
+    timestamp: str
+) -> List[Dict[str, any]]:
+    """
+    Create stratified trial sequence for a block.
+    
+    Ensures equal representation of each concept-item within the block.
+    Uses date-time + block number + participant for unique seed per block.
+    This ensures each block has a unique randomization pattern.
+    
+    Parameters
+    ----------
+    n_trials_per_block : int
+        Number of trials in this block
+    concepts_a : list
+        Category A concepts
+    concepts_b : list
+        Category B concepts
+    block_num : int
+        Block number (0-indexed)
+    participant_id : str
+        Participant ID
+    session_id : int
+        Session ID
+    timestamp : str
+        Timestamp string for seed generation (format: YYYYMMDD_HHMMSS)
+        
+    Returns
+    -------
+    list
+        Stratified trial sequence for this block
+    """
+    # Create unique seed for this block
+    # Combines: participant_id + session_id + timestamp + block_num
+    # This ensures each block has unique randomization while being reproducible
+    seed_str = f"{participant_id}_{session_id}_{timestamp}_block{block_num}"
+    seed = hash(seed_str) % (2**31)
+    np.random.seed(seed)
+    
+    # Calculate trials per concept-item for this block
+    n_concepts_a = len(concepts_a)
+    n_concepts_b = len(concepts_b)
+    
+    # For balanced design, we need equal A/B trials
+    trials_per_category = n_trials_per_block // 2
+    
+    # Calculate how many times each concept should appear in this block
+    # This ensures stratification across the entire experiment
+    trials_per_concept_a = trials_per_category // n_concepts_a
+    trials_per_concept_b = trials_per_category // n_concepts_b
+    
+    # Create lists with required repetitions of each concept
+    concept_list_a = []
+    for concept in concepts_a:
+        concept_list_a.extend([concept] * trials_per_concept_a)
+    
+    concept_list_b = []
+    for concept in concepts_b:
+        concept_list_b.extend([concept] * trials_per_concept_b)
+    
+    # Handle remainder if trials don't divide evenly
+    remainder_a = trials_per_category - len(concept_list_a)
+    if remainder_a > 0:
+        # Distribute remainder randomly
+        extra_a = np.random.choice(concepts_a, remainder_a, replace=False)
+        concept_list_a.extend(extra_a)
+    
+    remainder_b = trials_per_category - len(concept_list_b)
+    if remainder_b > 0:
+        extra_b = np.random.choice(concepts_b, remainder_b, replace=False)
+        concept_list_b.extend(extra_b)
+    
+    # Shuffle within each category
+    np.random.shuffle(concept_list_a)
+    np.random.shuffle(concept_list_b)
+    
+    # Interleave A and B (alternating)
+    trials = []
+    for i in range(max(len(concept_list_a), len(concept_list_b))):
+        if i < len(concept_list_a):
+            trials.append({
+                'trial_num': len(trials) + 1,
+                'concept': concept_list_a[i],
+                'category': 'A'
+            })
+        if i < len(concept_list_b):
+            trials.append({
+                'trial_num': len(trials) + 1,
+                'concept': concept_list_b[i],
+                'category': 'B'
+            })
+    
+    return trials
+
+
 def shuffle_trials(trials: List[Dict[str, any]],
                   preserve_balance: bool = True,
                   seed: Optional[int] = None) -> List[Dict[str, any]]:

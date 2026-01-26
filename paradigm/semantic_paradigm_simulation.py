@@ -30,7 +30,7 @@ from paradigm.utils import (
     get_block_start_code, get_block_end_code,
     DisplayManager, create_window,
     create_metadata, create_trial_data_dict, save_trial_data, print_experiment_summary,
-    create_balanced_sequence, validate_trial_sequence,
+    create_balanced_sequence, validate_trial_sequence, create_stratified_block_sequence,
     create_beep_sound, play_beep,
     jittered_wait,
     find_block_folders, get_next_block_number, get_block_folder_path, ensure_block_folder,
@@ -326,14 +326,21 @@ def run_experiment_simulation(
         n_trials_total = config.get('N_TRIALS', 20)
         trials_per_block = n_trials_total // n_blocks
         
-        # Generate trial sequences for ALL blocks
+        # Generate timestamp for seed generation (shared across all blocks)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        # Generate trial sequences for ALL blocks using stratified randomization
+        # Each block gets unique seed but same timestamp ensures reproducibility
         all_blocks_trials = []
         for b in range(n_blocks):
-            block_trials = create_balanced_sequence(
-                n_trials=trials_per_block,
+            block_trials = create_stratified_block_sequence(
+                n_trials_per_block=trials_per_block,
                 concepts_a=config.get('CONCEPTS_CATEGORY_A', []),
                 concepts_b=config.get('CONCEPTS_CATEGORY_B', []),
-                randomize=config.get('RANDOMIZE_CONCEPTS', True)
+                block_num=b,
+                participant_id=participant_id,
+                session_id=session_id,
+                timestamp=timestamp
             )
             all_blocks_trials.append(block_trials)
         
@@ -349,7 +356,8 @@ def run_experiment_simulation(
             },
             'metadata': {
                 'participant_id': participant_id,
-                'session_id': session_id
+                'session_id': session_id,
+                'timestamp': timestamp
             }
         }
         

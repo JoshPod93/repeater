@@ -35,7 +35,8 @@ from .randomization_utils import (
     create_balanced_sequence,
     create_date_seeded_sequence,
     validate_trial_sequence,
-    shuffle_trials
+    shuffle_trials,
+    create_stratified_block_sequence
 )
 
 from .audio_utils import (
@@ -94,6 +95,7 @@ __all__ = [
     'create_date_seeded_sequence',
     'validate_trial_sequence',
     'shuffle_trials',
+    'create_stratified_block_sequence',
     # Audio utilities
     'create_beep_sound',
     'play_beep',

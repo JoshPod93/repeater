@@ -58,9 +58,10 @@ ANIMALS = [
 # =============================================================================
 
 # --- Option 1: Two-Category Design (most common for BCI) ---
-# Select 4-6 items from each category for balanced design
-DESIGN_1_CATEGORY_A = BODY_PARTS_FULL[:6]  # ['hand', 'foot', 'elbow', 'knee', 'shoulder', 'wrist']
-DESIGN_1_CATEGORY_B = FRUITS[:6]           # ['apple', 'banana', 'orange', 'grape', 'strawberry', 'lemon']
+# Select 5 items from each category for 10 concept-items total
+# 100 trials / 10 items = 10 trials per concept-item
+DESIGN_1_CATEGORY_A = BODY_PARTS_FULL[:5]  # ['hand', 'foot', 'elbow', 'knee', 'shoulder']
+DESIGN_1_CATEGORY_B = FRUITS[:5]           # ['apple', 'banana', 'orange', 'grape', 'strawberry']
 
 # --- Option 2: Body Parts vs Vegetables ---
 DESIGN_2_CATEGORY_A = BODY_PARTS_FULL[:5]
@@ -155,11 +156,13 @@ TRIAL_DURATION = (FIXATION_DURATION + PROMPT_DURATION + POST_CONCEPT_PAUSE +
 #
 # For full experiment, use 100-200 total trials (50-100 per category)
 # For testing/pilot, 40-60 trials is acceptable
-N_TRIALS = 60                # Total number of concept presentations (30 per category)
-                              # Each presentation has N_BEEPS repetitions (8) = 480 total analysis trials
+N_TRIALS = 100               # Total number of concept presentations (50 per category)
+                              # With 10 concept-items (5 per category), this gives 10 trials per item
+                              # Each presentation has N_BEEPS repetitions (8) = 800 total analysis trials
                               # Set to 40-60 for pilot testing, 100-200 for full experiment
-N_BLOCKS = 3                 # Number of blocks (each block launched individually)
-TRIALS_PER_BLOCK = N_TRIALS // N_BLOCKS  # Trials per block (20 for 60 trials / 3 blocks)
+N_BLOCKS = 10                # Number of blocks (each block launched individually)
+                              # 10 blocks × 10 trials = 100 total trials = 10 trials per concept-item
+TRIALS_PER_BLOCK = N_TRIALS // N_BLOCKS  # Trials per block (10 for 100 trials / 10 blocks)
 
 # Randomization
 RANDOMIZE_CONCEPTS = True    # Randomly select concepts within categories
