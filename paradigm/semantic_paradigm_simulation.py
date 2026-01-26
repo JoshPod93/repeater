@@ -490,11 +490,9 @@ def run_experiment_simulation(
     core.wait(0.1)
     
     # Get trial sequence for this block
-    protocol = None  # Initialize for later use
-    all_blocks_trials = None  # Initialize for later use
-    
     if not existing_blocks:
         # First block - use trials from protocol we just generated
+        # all_blocks_trials was created above in the if not existing_blocks block
         trials = all_blocks_trials[block_num]
         print(f"\n[SEQUENCE] Using trials from generated protocol (block {block_num})")
     else:
