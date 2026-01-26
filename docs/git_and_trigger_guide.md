@@ -39,7 +39,33 @@ git remote add origin git@github.com:username/repo.git
 
 ## Common Git Commands
 
-### Basic Workflow
+### Using the Git Commit Tool (Recommended)
+This project includes a helpful CLI tool for making commits with proper validation:
+
+```bash
+# Interactive commit (shows status, suggests message)
+python scripts/git_commit.py
+
+# Quick commit with message
+python scripts/git_commit.py -m "Add feature X"
+
+# Commit with detailed description
+python scripts/git_commit.py -m "Add feature X" -b "Detailed description here"
+
+# Commit specific files only
+python scripts/git_commit.py -f file1.py file2.py -m "Update files"
+
+# Dry run (see what would be committed)
+python scripts/git_commit.py --dry-run
+```
+
+The tool automatically:
+- Validates commit message format (max 72 chars, descriptive)
+- Stages files appropriately
+- Provides helpful error messages
+- Suggests commit messages based on changed files
+
+### Basic Git Workflow (Manual)
 ```bash
 # Check status
 git status
