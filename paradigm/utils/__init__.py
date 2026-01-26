@@ -39,6 +39,11 @@ from .audio_utils import (
     play_beep
 )
 
+from .timing_utils import (
+    jittered_wait,
+    get_jittered_duration
+)
+
 __all__ = [
     # Trigger utilities
     'TriggerHandler',
@@ -64,5 +69,8 @@ __all__ = [
     'shuffle_trials',
     # Audio utilities
     'create_beep_sound',
-    'play_beep'
+    'play_beep',
+    # Timing utilities
+    'jittered_wait',
+    'get_jittered_duration'
 ]

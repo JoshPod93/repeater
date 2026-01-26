@@ -29,7 +29,8 @@ from paradigm.utils import (
     DisplayManager, create_window,
     create_metadata, create_trial_data_dict, save_trial_data, print_experiment_summary,
     create_balanced_sequence, validate_trial_sequence,
-    create_beep_sound, play_beep
+    create_beep_sound, play_beep,
+    jittered_wait
 )
 
 
@@ -42,7 +43,9 @@ def simulate_visualization_period(
     trigger_handler: TriggerHandler,
     trial_num: int,
     total_trials: int,
-    show_countdown: bool = True
+    show_countdown: bool = True,
+    use_jitter: bool = True,
+    jitter_range: float = 0.1
 ) -> List[float]:
     """
     Simulate visualization period with beeps and optional countdown.
@@ -79,7 +82,10 @@ def simulate_visualization_period(
     display.clear_screen()
     
     # Send beep start trigger
-    timestamp, _ = trigger_handler.send_trigger(TRIGGER_CODES['beep_start'])
+    timestamp, _ = trigger_handler.send_trigger(
+        TRIGGER_CODES['beep_start'],
+        event_name='beep_start'
+    )
     beep_timestamps.append(timestamp)
     
     # Visualization period with beeps
@@ -91,7 +97,10 @@ def simulate_visualization_period(
             display.show_text(countdown_text, height=0.05, color='gray')
         
         # Send beep trigger
-        timestamp, _ = trigger_handler.send_trigger(TRIGGER_CODES['beep'])
+        timestamp, _ = trigger_handler.send_trigger(
+            TRIGGER_CODES['beep'],
+            event_name=f'beep_{beep_idx + 1}_{n_beeps}'
+        )
         beep_timestamps.append(timestamp)
         
         # Play beep using utility function
@@ -99,8 +108,9 @@ def simulate_visualization_period(
         
         print(f"  [SIM] Beep {beep_idx + 1}/{n_beeps} at {timestamp:.3f}s")
         
-        # Wait for next beep
-        core.wait(beep_interval)
+        # Jittered beep interval
+        wait_duration = jittered_wait(beep_interval, jitter_range) if use_jitter else beep_interval
+        core.wait(wait_duration)
     
     return beep_timestamps
 
@@ -152,12 +162,19 @@ def run_single_trial_simulation(
     
     print(f"\n[SIM] Trial {trial_num}/{total_trials}: {concept} (Category {category})")
     
-    # 1. FIXATION
+    # 1. FIXATION (jittered)
     display.show_fixation()
-    timestamp, _ = trigger_handler.send_trigger(TRIGGER_CODES['fixation'])
+    timestamp, _ = trigger_handler.send_trigger(
+        TRIGGER_CODES['fixation'],
+        event_name='fixation'
+    )
     trial_data['timestamps']['fixation'] = timestamp
     print(f"  [SIM] Fixation at {timestamp:.3f}s")
-    core.wait(config.get('FIXATION_DURATION', 2.0))
+    
+    use_jitter = config.get('USE_JITTER', True)
+    jitter_range = config.get('JITTER_RANGE', 0.1)
+    fixation_duration = config.get('FIXATION_DURATION', 2.0)
+    core.wait(jittered_wait(fixation_duration, jitter_range) if use_jitter else fixation_duration)
     
     # 2. CONCEPT PRESENTATION
     progress_text = f"Trial {trial_num}/{total_trials}"
@@ -166,11 +183,21 @@ def run_single_trial_simulation(
     # Send category-specific trigger
     trigger_code = (TRIGGER_CODES['concept_category_a'] if category == 'A' 
                    else TRIGGER_CODES['concept_category_b'])
-    timestamp, _ = trigger_handler.send_trigger(trigger_code)
+    event_name = f'concept_{concept}_category_{category}'
+    timestamp, _ = trigger_handler.send_trigger(trigger_code, event_name=event_name)
     trial_data['timestamps']['concept'] = timestamp
     print(f"  [SIM] Concept '{concept}' (Category {category}) at {timestamp:.3f}s")
     
-    core.wait(config.get('PROMPT_DURATION', 2.0))
+    # Jittered prompt duration
+    use_jitter = config.get('USE_JITTER', True)
+    jitter_range = config.get('JITTER_RANGE', 0.1)
+    prompt_duration = config.get('PROMPT_DURATION', 2.0)
+    core.wait(jittered_wait(prompt_duration, jitter_range) if use_jitter else prompt_duration)
+    
+    # Clear concept and pause before beeps (1 second pause after concept disappears)
+    display.clear_screen()
+    post_concept_pause = config.get('POST_CONCEPT_PAUSE', 1.0)
+    core.wait(jittered_wait(post_concept_pause, jitter_range) if use_jitter else post_concept_pause)
     
     # 3. SIMULATED VISUALIZATION PERIOD
     n_beeps = config.get('N_BEEPS', 8)
@@ -193,10 +220,17 @@ def run_single_trial_simulation(
     
     # 4. REST PERIOD
     display.clear_screen()
-    timestamp, _ = trigger_handler.send_trigger(TRIGGER_CODES['trial_end'])
+    timestamp, _ = trigger_handler.send_trigger(
+        TRIGGER_CODES['trial_end'],
+        event_name='trial_end'
+    )
     trial_data['timestamps']['rest'] = timestamp
     print(f"  [SIM] Trial end at {timestamp:.3f}s")
-    core.wait(config.get('REST_DURATION', 1.0))
+    
+    use_jitter = config.get('USE_JITTER', True)
+    jitter_range = config.get('JITTER_RANGE', 0.1)
+    rest_duration = config.get('REST_DURATION', 1.0)
+    core.wait(jittered_wait(rest_duration, jitter_range) if use_jitter else rest_duration)
     
     return trial_data
 
@@ -258,12 +292,19 @@ def run_experiment_simulation(
         if verbose:
             print(f"\n[OVERRIDE] Running {n_trials} trials (instead of {config.get('N_TRIALS', 20)})")
     
-    # Initialize trigger handler (test mode - no hardware)
+    # Initialize trigger handler (test mode - no hardware) with CSV logging
+    csv_log_dir = Path(__file__).parent.parent / 'data' / 'triggers'
+    csv_log_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    csv_log_path = csv_log_dir / f"sub-{participant_id}_ses-{session_id}_{timestamp}_triggers.csv"
+    
     trigger_handler = create_trigger_handler(
         port_address=config.get('PARALLEL_PORT_ADDRESS', 0x0378),
-        use_triggers=False  # Simulation mode - no actual triggers
+        use_triggers=False,  # Simulation mode - no actual triggers
+        csv_log_path=csv_log_path  # Enable CSV mirror logging
     )
     print("\n[TRIGGER] Test mode enabled (triggers simulated, not sent)")
+    print(f"[TRIGGER] CSV logging enabled: {csv_log_path}")
     
     # Create window (non-fullscreen for simulation)
     win = create_window(
@@ -354,7 +395,10 @@ def run_experiment_simulation(
     print("="*80)
     
     experiment_clock.reset()
-    timestamp, _ = trigger_handler.send_trigger(TRIGGER_CODES['block_start'])
+    timestamp, _ = trigger_handler.send_trigger(
+        TRIGGER_CODES['block_start'],
+        event_name='block_start'
+    )
     print(f"[TRIGGER] Block start at {timestamp:.3f}s")
     
     # Run all trials
@@ -379,13 +423,23 @@ def run_experiment_simulation(
         
         trial_data_list.append(trial_data)
         
-        # Inter-trial interval
+        # Inter-trial interval (jittered)
         if trial_idx < len(trials):
-            core.wait(config.get('INTER_TRIAL_INTERVAL', 0.5))
+            use_jitter = config.get('USE_JITTER', True)
+            jitter_range = config.get('JITTER_RANGE', 0.1)
+            inter_trial_interval = config.get('INTER_TRIAL_INTERVAL', 0.5)
+            wait_duration = jittered_wait(inter_trial_interval, jitter_range) if use_jitter else inter_trial_interval
+            core.wait(wait_duration)
     
     # Block end
-    timestamp, _ = trigger_handler.send_trigger(TRIGGER_CODES['block_end'])
+    timestamp, _ = trigger_handler.send_trigger(
+        TRIGGER_CODES['block_end'],
+        event_name='block_end'
+    )
     print(f"\n[TRIGGER] Block end at {timestamp:.3f}s")
+    
+    # Close trigger handler (saves CSV file)
+    trigger_handler.close()
     
     # End screen
     display.show_text(

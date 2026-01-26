@@ -23,7 +23,8 @@ from paradigm.utils import (
     DisplayManager, create_window,
     create_metadata, create_trial_data_dict, save_trial_data, print_experiment_summary,
     create_balanced_sequence, validate_trial_sequence,
-    create_beep_sound, play_beep
+    create_beep_sound, play_beep,
+    jittered_wait
 )
 
 
@@ -58,11 +59,19 @@ class SemanticVisualizationExperiment:
             config_path = Path(__file__).parent.parent / 'config' / 'experiment_config.py'
         self.config = load_config(str(config_path))
         
-        # Initialize trigger handler
+        # Initialize trigger handler with CSV logging
         port_address = self.config.get('PARALLEL_PORT_ADDRESS', 0x0378)
+        
+        # Set up CSV log path for trigger mirror logging
+        csv_log_dir = Path(__file__).parent.parent / 'data' / 'triggers'
+        csv_log_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        csv_log_path = csv_log_dir / f"sub-{participant_id}_ses-{session_id}_{timestamp}_triggers.csv"
+        
         self.trigger_handler = create_trigger_handler(
             port_address=port_address,
-            use_triggers=use_triggers
+            use_triggers=use_triggers,
+            csv_log_path=csv_log_path
         )
         
         # Create window
@@ -129,9 +138,23 @@ class SemanticVisualizationExperiment:
         
         # 1. FIXATION
         self.display.show_fixation()
-        timestamp, _ = self.trigger_handler.send_trigger(TRIGGER_CODES['fixation'])
+        timestamp, _ = self.trigger_handler.send_trigger(
+            TRIGGER_CODES['fixation'],
+            event_name='fixation'
+        )
         trial_data['timestamps']['fixation'] = timestamp
-        core.wait(self.config.get('FIXATION_DURATION', 2.0))
+        
+        # Jittered fixation duration
+        use_jitter = self.config.get('USE_JITTER', True)
+        jitter_range = self.config.get('JITTER_RANGE', 0.1)
+        fixation_duration = self.config.get('FIXATION_DURATION', 2.0)
+        
+        if use_jitter:
+            wait_duration = jittered_wait(fixation_duration, jitter_range)
+        else:
+            wait_duration = fixation_duration
+        
+        core.wait(wait_duration)
         
         # 2. CONCEPT PRESENTATION
         progress_text = f"Trial {trial_num}/{self.config.get('N_TRIALS', 20)}"
@@ -140,55 +163,110 @@ class SemanticVisualizationExperiment:
         # Send category-specific trigger
         trigger_code = (TRIGGER_CODES['concept_category_a'] if category == 'A' 
                        else TRIGGER_CODES['concept_category_b'])
-        timestamp, _ = self.trigger_handler.send_trigger(trigger_code)
+        event_name = f'concept_{concept}_category_{category}'
+        timestamp, _ = self.trigger_handler.send_trigger(trigger_code, event_name=event_name)
         trial_data['timestamps']['concept'] = timestamp
         
         core.wait(self.config.get('PROMPT_DURATION', 2.0))
         
+        # Clear concept display
+        self.display.clear_screen()
+        
+        # PAUSE AFTER CONCEPT DISAPPEARS (before beeps start)
+        use_jitter = self.config.get('USE_JITTER', True)
+        jitter_range = self.config.get('JITTER_RANGE', 0.1)
+        post_concept_pause = self.config.get('POST_CONCEPT_PAUSE', 1.0)
+        
+        if use_jitter:
+            pause_duration = jittered_wait(post_concept_pause, jitter_range)
+        else:
+            pause_duration = post_concept_pause
+        
+        core.wait(pause_duration)
+        
         # 3. RHYTHMIC BEEP SEQUENCE
         self.display.clear_screen()
-        timestamp, _ = self.trigger_handler.send_trigger(TRIGGER_CODES['beep_start'])
+        timestamp, _ = self.trigger_handler.send_trigger(
+            TRIGGER_CODES['beep_start'],
+            event_name='beep_start'
+        )
         trial_data['timestamps']['beep_start'] = timestamp
         trial_data['timestamps']['beeps'] = []
         
         n_beeps = self.config.get('N_BEEPS', 8)
-        beep_interval = self.config.get('BEEP_INTERVAL', 0.8)
+        beep_interval_base = self.config.get('BEEP_INTERVAL', 0.8)
+        use_jitter = self.config.get('USE_JITTER', True)
+        jitter_range = self.config.get('JITTER_RANGE', 0.1)
         
         for beep_idx in range(n_beeps):
-            timestamp, _ = self.trigger_handler.send_trigger(TRIGGER_CODES['beep'])
+            timestamp, _ = self.trigger_handler.send_trigger(
+                TRIGGER_CODES['beep'],
+                event_name=f'beep_{beep_idx + 1}_{n_beeps}'
+            )
             trial_data['timestamps']['beeps'].append(timestamp)
             
             # Play beep using utility function
             play_beep(self.beep, stop_first=True)
             
             print(f"  Beep {beep_idx + 1}/{n_beeps} at {timestamp:.3f}s")
-            core.wait(beep_interval)
+            
+            # Jittered beep interval
+            if use_jitter:
+                wait_duration = jittered_wait(beep_interval_base, jitter_range)
+            else:
+                wait_duration = beep_interval_base
+            
+            core.wait(wait_duration)
         
         # 4. REST PERIOD
         self.display.clear_screen()
-        timestamp, _ = self.trigger_handler.send_trigger(TRIGGER_CODES['trial_end'])
+        timestamp, _ = self.trigger_handler.send_trigger(
+            TRIGGER_CODES['trial_end'],
+            event_name='trial_end'
+        )
         trial_data['timestamps']['rest'] = timestamp
-        core.wait(self.config.get('REST_DURATION', 1.0))
+        
+        # Jittered rest duration
+        use_jitter = self.config.get('USE_JITTER', True)
+        jitter_range = self.config.get('JITTER_RANGE', 0.1)
+        rest_duration = self.config.get('REST_DURATION', 1.0)
+        
+        if use_jitter:
+            wait_duration = jittered_wait(rest_duration, jitter_range)
+        else:
+            wait_duration = rest_duration
+        
+        core.wait(wait_duration)
         
         return trial_data
     
     def run_practice_trial(self, concept: str = 'practice', category: str = 'A'):
         """Run a practice trial with visual feedback."""
+        use_jitter = self.config.get('USE_JITTER', True)
+        jitter_range = self.config.get('JITTER_RANGE', 0.1)
+        
         # Show practice label
         self.display.show_text('PRACTICE TRIAL', height=0.05, color='yellow')
-        core.wait(0.5)
+        core.wait(jittered_wait(0.5, jitter_range) if use_jitter else 0.5)
         
-        # Fixation
+        # Fixation (jittered)
         self.display.show_fixation()
-        core.wait(self.config.get('FIXATION_DURATION', 2.0))
+        fixation_duration = self.config.get('FIXATION_DURATION', 2.0)
+        core.wait(jittered_wait(fixation_duration, jitter_range) if use_jitter else fixation_duration)
         
-        # Concept
+        # Concept (jittered)
         self.display.show_concept(concept)
-        core.wait(self.config.get('PROMPT_DURATION', 2.0))
+        prompt_duration = self.config.get('PROMPT_DURATION', 2.0)
+        core.wait(jittered_wait(prompt_duration, jitter_range) if use_jitter else prompt_duration)
         
-        # Beeps with countdown
+        # Clear concept and pause before beeps
+        self.display.clear_screen()
+        post_concept_pause = self.config.get('POST_CONCEPT_PAUSE', 1.0)
+        core.wait(jittered_wait(post_concept_pause, jitter_range) if use_jitter else post_concept_pause)
+        
+        # Beeps with countdown (jittered intervals)
         n_beeps = self.config.get('N_BEEPS', 8)
-        beep_interval = self.config.get('BEEP_INTERVAL', 0.8)
+        beep_interval_base = self.config.get('BEEP_INTERVAL', 0.8)
         
         for beep_idx in range(n_beeps):
             countdown = f'Visualizing... {n_beeps - beep_idx}'
@@ -196,11 +274,15 @@ class SemanticVisualizationExperiment:
             
             # Play beep using utility function
             play_beep(self.beep, stop_first=True)
-            core.wait(beep_interval)
+            
+            # Jittered beep interval
+            wait_duration = jittered_wait(beep_interval_base, jitter_range) if use_jitter else beep_interval_base
+            core.wait(wait_duration)
         
-        # Rest
+        # Rest (jittered)
         self.display.clear_screen()
-        core.wait(self.config.get('REST_DURATION', 1.0))
+        rest_duration = self.config.get('REST_DURATION', 1.0)
+        core.wait(jittered_wait(rest_duration, jitter_range) if use_jitter else rest_duration)
     
     def run_experiment(self, n_practice_trials: int = 2):
         """Run the complete experiment."""
@@ -228,7 +310,11 @@ class SemanticVisualizationExperiment:
                 self.run_practice_trial(concept, category)
                 
                 if i < n_practice_trials - 1:
-                    core.wait(1.0)
+                    # Jittered wait
+                    use_jitter = self.config.get('USE_JITTER', True)
+                    jitter_range = self.config.get('JITTER_RANGE', 0.1)
+                    wait_duration = jittered_wait(1.0, jitter_range) if use_jitter else 1.0
+                    core.wait(wait_duration)
         
         # Ready screen
         self.display.show_text(
@@ -260,16 +346,24 @@ class SemanticVisualizationExperiment:
         print("="*60)
         
         self.experiment_clock.reset()
-        self.trigger_handler.send_trigger(TRIGGER_CODES['block_start'])
+        self.trigger_handler.send_trigger(
+            TRIGGER_CODES['block_start'],
+            event_name='block_start'
+        )
         
         # Run all trials
         for trial_spec in trials:
             trial_data = self.run_trial(trial_spec)
             self.trial_data.append(trial_data)
             
-            # Inter-trial interval
+            # Inter-trial interval (jittered)
             if trial_spec['trial_num'] < self.config.get('N_TRIALS', 20):
-                core.wait(self.config.get('INTER_TRIAL_INTERVAL', 0.5))
+                use_jitter = self.config.get('USE_JITTER', True)
+                jitter_range = self.config.get('JITTER_RANGE', 0.1)
+                inter_trial_interval = self.config.get('INTER_TRIAL_INTERVAL', 0.5)
+                
+                wait_duration = jittered_wait(inter_trial_interval, jitter_range) if use_jitter else inter_trial_interval
+                core.wait(wait_duration)
             
             # Check for escape
             keys = event.getKeys(keyList=['escape'])
@@ -277,7 +371,10 @@ class SemanticVisualizationExperiment:
                 print("\nExperiment terminated by user.")
                 break
         
-        self.trigger_handler.send_trigger(TRIGGER_CODES['block_end'])
+        self.trigger_handler.send_trigger(
+            TRIGGER_CODES['block_end'],
+            event_name='block_end'
+        )
         
         # End screen
         self.display.show_text(
