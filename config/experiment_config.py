@@ -4,8 +4,13 @@ Configuration file for Rhythmic Semantic Visualization Experiment
 
 Modify this file to easily change concepts, timing, and experimental parameters.
 
-Author: A. Tates (JP)
+Base Protocol: Adapted from Alberto Tates' successful "Ours rhythm" protocol
+(see examples/rhytmic_experiment.py and Tates et al., IEEE TNSRE, 2025)
+
+Author: Dr. Joshua Podmore
 BCI-NE Lab, University of Essex
+
+For complete parameter justifications with citations, see docs/config_justification.md
 """
 
 # =============================================================================
