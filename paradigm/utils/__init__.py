@@ -7,7 +7,11 @@ Provides utilities for trigger handling, display management, data logging, and r
 from .trigger_utils import (
     TriggerHandler,
     TRIGGER_CODES,
-    create_trigger_handler
+    create_trigger_handler,
+    get_trial_start_code,
+    get_trial_end_code,
+    get_block_start_code,
+    get_block_end_code
 )
 
 from .display_utils import (
@@ -49,6 +53,10 @@ __all__ = [
     'TriggerHandler',
     'TRIGGER_CODES',
     'create_trigger_handler',
+    'get_trial_start_code',
+    'get_trial_end_code',
+    'get_block_start_code',
+    'get_block_end_code',
     # Display utilities
     'create_window',
     'create_fixation_cross',

@@ -20,6 +20,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import load_config
 from paradigm.utils import (
     TriggerHandler, TRIGGER_CODES, create_trigger_handler,
+    get_trial_start_code, get_trial_end_code,
+    get_block_start_code, get_block_end_code,
     DisplayManager, create_window,
     create_metadata, create_trial_data_dict, save_trial_data, print_experiment_summary,
     create_balanced_sequence, validate_trial_sequence,
@@ -136,10 +138,11 @@ class SemanticVisualizationExperiment:
         
         print(f"\nTrial {trial_num}/{self.config.get('N_TRIALS', 20)}: {concept} (Category {category})")
         
-        # Send trial start trigger
+        # Send trial start trigger (unique code for this trial number)
+        trial_start_code = get_trial_start_code(trial_num)
         timestamp, _ = self.trigger_handler.send_trigger(
-            TRIGGER_CODES['trial_start'],
-            event_name='trial_start'
+            trial_start_code,
+            event_name=f'trial_{trial_num}_start'
         )
         trial_data['timestamps']['trial_start'] = timestamp
         
@@ -229,9 +232,12 @@ class SemanticVisualizationExperiment:
         
         # 4. REST PERIOD
         self.display.clear_screen()
+        
+        # Send trial end trigger (unique code for this trial number)
+        trial_end_code = get_trial_end_code(trial_num)
         timestamp, _ = self.trigger_handler.send_trigger(
-            TRIGGER_CODES['trial_end'],
-            event_name='trial_end'
+            trial_end_code,
+            event_name=f'trial_{trial_num}_end'
         )
         trial_data['timestamps']['rest'] = timestamp
         
@@ -300,9 +306,13 @@ class SemanticVisualizationExperiment:
         print("="*60)
         
         self.experiment_clock.reset()
+        
+        # Send block start trigger (unique code for block number)
+        block_num = 1  # Currently single block, but supports multiple
+        block_start_code = get_block_start_code(block_num)
         self.trigger_handler.send_trigger(
-            TRIGGER_CODES['block_start'],
-            event_name='block_start'
+            block_start_code,
+            event_name=f'block_{block_num}_start'
         )
         
         # Run all trials
@@ -325,9 +335,12 @@ class SemanticVisualizationExperiment:
                 print("\nExperiment terminated by user.")
                 break
         
+        # Send block end trigger (unique code for block number)
+        block_num = 1  # Currently single block, but supports multiple
+        block_end_code = get_block_end_code(block_num)
         self.trigger_handler.send_trigger(
-            TRIGGER_CODES['block_end'],
-            event_name='block_end'
+            block_end_code,
+            event_name=f'block_{block_num}_end'
         )
         
         # Save data

@@ -224,7 +224,7 @@ class TriggerHandler:
 # Standard trigger codes for semantic visualization paradigm
 # Organized with spacing to avoid buffer issues and allow expansion
 TRIGGER_CODES = {
-    # Trial-level events
+    # Trial-level events (base codes)
     'trial_start': 2,
     'fixation': 1,
     
@@ -243,13 +243,101 @@ TRIGGER_CODES = {
     'beep_7': 37,  # Seventh beep
     'beep_8': 38,  # Eighth beep
     
-    # Trial completion
+    # Trial completion (base code)
     'trial_end': 40,
     
-    # Block-level events
+    # Block-level events (base codes)
     'block_start': 50,
     'block_end': 51
 }
+
+
+def get_trial_start_code(trial_num: int) -> int:
+    """
+    Get unique trigger code for trial start.
+    
+    Trial N start = 100 + N
+    Range: 101-199 (supports up to 99 trials)
+    
+    Parameters
+    ----------
+    trial_num : int
+        Trial number (1-indexed)
+    
+    Returns
+    -------
+    int
+        Trigger code for trial start
+    """
+    if trial_num < 1 or trial_num > 99:
+        raise ValueError(f"Trial number must be between 1 and 99, got {trial_num}")
+    return 100 + trial_num
+
+
+def get_trial_end_code(trial_num: int) -> int:
+    """
+    Get unique trigger code for trial end.
+    
+    Trial N end = 200 + N
+    Range: 201-299 (supports up to 99 trials)
+    
+    Parameters
+    ----------
+    trial_num : int
+        Trial number (1-indexed)
+    
+    Returns
+    -------
+    int
+        Trigger code for trial end
+    """
+    if trial_num < 1 or trial_num > 99:
+        raise ValueError(f"Trial number must be between 1 and 99, got {trial_num}")
+    return 200 + trial_num
+
+
+def get_block_start_code(block_num: int) -> int:
+    """
+    Get unique trigger code for block start.
+    
+    Block N start = 150 + N
+    Range: 151-159 (supports up to 9 blocks)
+    
+    Parameters
+    ----------
+    block_num : int
+        Block number (1-indexed)
+    
+    Returns
+    -------
+    int
+        Trigger code for block start
+    """
+    if block_num < 1 or block_num > 9:
+        raise ValueError(f"Block number must be between 1 and 9, got {block_num}")
+    return 150 + block_num
+
+
+def get_block_end_code(block_num: int) -> int:
+    """
+    Get unique trigger code for block end.
+    
+    Block N end = 250 + N
+    Range: 251-259 (supports up to 9 blocks)
+    
+    Parameters
+    ----------
+    block_num : int
+        Block number (1-indexed)
+    
+    Returns
+    -------
+    int
+        Trigger code for block end
+    """
+    if block_num < 1 or block_num > 9:
+        raise ValueError(f"Block number must be between 1 and 9, got {block_num}")
+    return 250 + block_num
 
 
 def create_trigger_handler(port_address: int = 0x0378, use_triggers: bool = False,

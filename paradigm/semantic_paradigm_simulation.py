@@ -26,6 +26,8 @@ sys.path.insert(0, str(project_root))
 from config import load_config
 from paradigm.utils import (
     TriggerHandler, TRIGGER_CODES, create_trigger_handler,
+    get_trial_start_code, get_trial_end_code,
+    get_block_start_code, get_block_end_code,
     DisplayManager, create_window,
     create_metadata, create_trial_data_dict, save_trial_data, print_experiment_summary,
     create_balanced_sequence, validate_trial_sequence,
@@ -166,13 +168,14 @@ def run_single_trial_simulation(
     
     print(f"\n[SIM] Trial {trial_num}/{total_trials}: {concept} (Category {category})")
     
-    # Send trial start trigger
+    # Send trial start trigger (unique code for this trial number)
+    trial_start_code = get_trial_start_code(trial_num)
     timestamp, _ = trigger_handler.send_trigger(
-        TRIGGER_CODES['trial_start'],
-        event_name='trial_start'
+        trial_start_code,
+        event_name=f'trial_{trial_num}_start'
     )
     trial_data['timestamps']['trial_start'] = timestamp
-    print(f"  [SIM] Trial start at {timestamp:.3f}s")
+    print(f"  [SIM] Trial {trial_num} start (trigger {trial_start_code}) at {timestamp:.3f}s")
     
     # 1. FIXATION (NO JITTER - important timing)
     display.show_fixation()
@@ -229,12 +232,15 @@ def run_single_trial_simulation(
     
     # 4. REST PERIOD
     display.clear_screen()
+    
+    # Send trial end trigger (unique code for this trial number)
+    trial_end_code = get_trial_end_code(trial_num)
     timestamp, _ = trigger_handler.send_trigger(
-        TRIGGER_CODES['trial_end'],
-        event_name='trial_end'
+        trial_end_code,
+        event_name=f'trial_{trial_num}_end'
     )
     trial_data['timestamps']['rest'] = timestamp
-    print(f"  [SIM] Trial end at {timestamp:.3f}s")
+    print(f"  [SIM] Trial {trial_num} end (trigger {trial_end_code}) at {timestamp:.3f}s")
     
     # Rest (JITTERED - pause event)
     use_jitter = config.get('USE_JITTER', True)
@@ -412,11 +418,15 @@ def run_experiment_simulation(
     print("="*80)
     
     experiment_clock.reset()
+    
+    # Send block start trigger (unique code for block number)
+    block_num = 1  # Currently single block, but supports multiple
+    block_start_code = get_block_start_code(block_num)
     timestamp, _ = trigger_handler.send_trigger(
-        TRIGGER_CODES['block_start'],
-        event_name='block_start'
+        block_start_code,
+        event_name=f'block_{block_num}_start'
     )
-    print(f"[TRIGGER] Block start at {timestamp:.3f}s")
+    print(f"[TRIGGER] Block {block_num} start (trigger {block_start_code}) at {timestamp:.3f}s")
     
     # Run all trials
     for trial_idx, trial_spec in enumerate(trials, 1):
@@ -449,11 +459,13 @@ def run_experiment_simulation(
             core.wait(wait_duration)
     
     # Block end
+    block_num = 1  # Currently single block, but supports multiple
+    block_end_code = get_block_end_code(block_num)
     timestamp, _ = trigger_handler.send_trigger(
-        TRIGGER_CODES['block_end'],
-        event_name='block_end'
+        block_end_code,
+        event_name=f'block_{block_num}_end'
     )
-    print(f"\n[TRIGGER] Block end at {timestamp:.3f}s")
+    print(f"\n[TRIGGER] Block {block_num} end (trigger {block_end_code}) at {timestamp:.3f}s")
     
     # Close trigger handler (saves CSV file)
     trigger_handler.close()
