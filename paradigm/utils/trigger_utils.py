@@ -298,44 +298,55 @@ def get_trial_start_code(trial_num: int) -> int:
     """
     Get unique trigger code for trial start.
     
-    Trial N start = 100 + N
-    Range: 101-199 (supports up to 99 trials)
+    Trial N start = 100 + (N % 10)  where N is 1-indexed within block
+    Range: 101-110 (supports trials 1-10, reused per block)
+    
+    Note: Trial codes are reused across blocks since blocks are separate sessions.
+    Trial number is the block-local trial number (1-10).
     
     Parameters
     ----------
     trial_num : int
-        Trial number (1-indexed)
+        Trial number (1-indexed, within block: 1-10)
     
     Returns
     -------
     int
         Trigger code for trial start
     """
-    if trial_num < 1 or trial_num > 99:
-        raise ValueError(f"Trial number must be between 1 and 99, got {trial_num}")
-    return 100 + trial_num
+    # Convert to block-local trial number (1-10)
+    block_local_trial = ((trial_num - 1) % 10) + 1
+    if block_local_trial < 1 or block_local_trial > 10:
+        raise ValueError(f"Block-local trial number must be between 1 and 10, got {block_local_trial} from {trial_num}")
+    return 100 + block_local_trial
 
 
 def get_trial_end_code(trial_num: int) -> int:
     """
     Get unique trigger code for trial end.
     
-    Trial N end = 200 + N
-    Range: 201-299 (supports up to 99 trials)
+    Trial N end = 150 + (N % 10)  where N is 1-indexed within block
+    Range: 151-160 (supports trials 1-10, reused per block)
+    
+    Note: Trial codes are reused across blocks since blocks are separate sessions.
+    Trial number is the block-local trial number (1-10).
+    All codes stay within 8-bit limit (0-255).
     
     Parameters
     ----------
     trial_num : int
-        Trial number (1-indexed)
+        Trial number (1-indexed, within block: 1-10)
     
     Returns
     -------
     int
         Trigger code for trial end
     """
-    if trial_num < 1 or trial_num > 99:
-        raise ValueError(f"Trial number must be between 1 and 99, got {trial_num}")
-    return 200 + trial_num
+    # Convert to block-local trial number (1-10)
+    block_local_trial = ((trial_num - 1) % 10) + 1
+    if block_local_trial < 1 or block_local_trial > 10:
+        raise ValueError(f"Block-local trial number must be between 1 and 10, got {block_local_trial} from {trial_num}")
+    return 150 + block_local_trial
 
 
 def get_block_start_code(block_num: int) -> int:

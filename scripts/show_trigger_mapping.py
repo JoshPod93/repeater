@@ -44,24 +44,28 @@ else:
 
 # Define code generation functions manually (matching the fixed versions)
 def get_trial_start_code(trial_num): 
-    if trial_num < 1 or trial_num > 99:
-        raise ValueError(f"Trial number must be between 1 and 99, got {trial_num}")
-    return 100 + trial_num
+    # Trial codes are reused per block (1-10)
+    block_local = ((trial_num - 1) % 10) + 1
+    if block_local < 1 or block_local > 10:
+        raise ValueError(f"Block-local trial number must be between 1 and 10, got {block_local} from {trial_num}")
+    return 100 + block_local
 
 def get_trial_end_code(trial_num):
-    if trial_num < 1 or trial_num > 99:
-        raise ValueError(f"Trial number must be between 1 and 99, got {trial_num}")
-    return 200 + trial_num
+    # Trial codes are reused per block (1-10)
+    block_local = ((trial_num - 1) % 10) + 1
+    if block_local < 1 or block_local > 10:
+        raise ValueError(f"Block-local trial number must be between 1 and 10, got {block_local} from {trial_num}")
+    return 150 + block_local
 
 def get_block_start_code(block_num):
-    if block_num < 1 or block_num > 9:
-        raise ValueError(f"Block number must be between 1 and 9, got {block_num}")
-    return 60 + block_num  # FIXED: Changed from 150+N to 60+N
+    if block_num < 1 or block_num > 10:
+        raise ValueError(f"Block number must be between 1 and 10, got {block_num}")
+    return 60 + block_num
 
 def get_block_end_code(block_num):
-    if block_num < 1 or block_num > 9:
-        raise ValueError(f"Block number must be between 1 and 9, got {block_num}")
-    return 70 + block_num  # FIXED: Changed from 250+N to 70+N
+    if block_num < 1 or block_num > 10:
+        raise ValueError(f"Block number must be between 1 and 10, got {block_num}")
+    return 70 + block_num
 
 def get_beep_code(beep_num, max_beeps=8):
     if beep_num < 1 or beep_num > max_beeps:
@@ -94,30 +98,22 @@ def show_complete_mapping():
     print("-" * 80)
     print("   Block Start: 60 + block_num")
     print("   Block End:   70 + block_num")
-    print("   Range: 61-69 (start), 71-79 (end) for blocks 1-9")
-    for block in range(1, 10):
+    print("   Range: 61-70 (start), 71-80 (end) for blocks 1-10")
+    for block in range(1, 11):
         start_code = get_block_start_code(block)
         end_code = get_block_end_code(block)
         print(f"   Block {block} start              = {start_code:3d} (0x{start_code:02X})")
         print(f"   Block {block} end                = {end_code:3d} (0x{end_code:02X})")
     
-    # Trial codes (show first 10 and last 10)
-    print("\n4. TRIAL CODES (Dynamic):")
+    # Trial codes (1-10, reused per block)
+    print("\n4. TRIAL CODES (Dynamic, reused per block):")
     print("-" * 80)
-    print("   Trial Start: 100 + trial_num")
-    print("   Trial End:   200 + trial_num")
-    print("   Range: 101-199 (start), 201-299 (end) for trials 1-99")
-    print("\n   First 10 trials:")
+    print("   Trial Start: 100 + (trial_num % 10)")
+    print("   Trial End:   150 + (trial_num % 10)")
+    print("   Range: 101-110 (start), 151-160 (end) for trials 1-10")
+    print("   NOTE: Codes are reused across blocks (each block has trials 1-10)")
+    print("\n   All 10 trials:")
     for trial in range(1, 11):
-        start_code = get_trial_start_code(trial)
-        end_code = get_trial_end_code(trial)
-        print(f"   Trial {trial:2d} start              = {start_code:3d} (0x{start_code:02X})")
-        print(f"   Trial {trial:2d} end                = {end_code:3d} (0x{end_code:02X})")
-    
-    print("\n   ... (trials 11-90) ...")
-    
-    print("\n   Last 9 trials:")
-    for trial in range(91, 100):
         start_code = get_trial_start_code(trial)
         end_code = get_trial_end_code(trial)
         print(f"   Trial {trial:2d} start              = {start_code:3d} (0x{start_code:02X})")
@@ -128,21 +124,22 @@ def show_complete_mapping():
     print("-" * 80)
     print("   Base codes:        1-51 (sparse)")
     print("   Beep codes:       31-38")
-    print("   Block start:      61-69")
-    print("   Block end:        71-79")
-    print("   Trial start:     101-199")
-    print("   Trial end:       201-299")
-    print("\n   Total unique codes: ~200+ (no overlaps)")
+    print("   Block start:      61-70")
+    print("   Block end:        71-80")
+    print("   Trial start:     101-110 (reused per block)")
+    print("   Trial end:       151-160 (reused per block)")
+    print("\n   Total unique codes: 55 (all within 0-255)")
     
-    # Overlap check
+    # Overlap check (excluding beep codes from base since they're intentionally duplicated)
     print("\n6. OVERLAP VERIFICATION:")
     print("-" * 80)
-    base_codes = set(TRIGGER_CODES.values())
+    # Base codes EXCLUDING beep codes (beeps are handled separately)
+    base_codes = {v for k, v in TRIGGER_CODES.items() if not k.startswith('beep_')}
     beep_codes = set(range(31, 39))
-    block_start_codes = set(range(61, 70))
-    block_end_codes = set(range(71, 80))
-    trial_start_codes = set(range(101, 200))
-    trial_end_codes = set(range(201, 300))
+    block_start_codes = set(range(61, 71))
+    block_end_codes = set(range(71, 81))
+    trial_start_codes = set(range(101, 111))
+    trial_end_codes = set(range(151, 161))
     
     all_ranges = [
         ("Base", base_codes),
