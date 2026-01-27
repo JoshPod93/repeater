@@ -354,7 +354,7 @@ def get_block_start_code(block_num: int) -> int:
     Get unique trigger code for block start.
     
     Block N start = 60 + N
-    Range: 61-69 (supports up to 9 blocks)
+    Range: 61-70 (supports up to 10 blocks)
     
     Note: Changed from 150+N to 60+N to avoid overlap with trial codes (101-199)
     
@@ -368,8 +368,8 @@ def get_block_start_code(block_num: int) -> int:
     int
         Trigger code for block start
     """
-    if block_num < 1 or block_num > 9:
-        raise ValueError(f"Block number must be between 1 and 9, got {block_num}")
+    if block_num < 1 or block_num > 10:
+        raise ValueError(f"Block number must be between 1 and 10, got {block_num}")
     return 60 + block_num
 
 
@@ -423,9 +423,9 @@ def get_block_end_code(block_num: int) -> int:
     Get unique trigger code for block end.
     
     Block N end = 70 + N
-    Range: 71-79 (supports up to 9 blocks)
+    Range: 71-80 (supports up to 10 blocks)
     
-    Note: Changed from 250+N to 70+N to avoid overlap with trial codes (201-299)
+    Note: Changed from 250+N to 70+N to avoid overlap with trial codes (151-160)
     
     Parameters
     ----------
@@ -437,8 +437,8 @@ def get_block_end_code(block_num: int) -> int:
     int
         Trigger code for block end
     """
-    if block_num < 1 or block_num > 9:
-        raise ValueError(f"Block number must be between 1 and 9, got {block_num}")
+    if block_num < 1 or block_num > 10:
+        raise ValueError(f"Block number must be between 1 and 10, got {block_num}")
     return 70 + block_num
 
 

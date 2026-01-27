@@ -21,7 +21,7 @@ python scripts/git_commit.py -m "Add feature X" -b "Detailed description"
 
 See `docs/git_and_trigger_guide.md` for more details.
 
-## Trigger Validation
+## Data Validation
 
 ### validate_triggers.py
 
@@ -44,19 +44,52 @@ python scripts/validate_triggers.py --bdf-file data/sub_9999/sub_9999.bdf --resu
 - Validation plots
 - Missing trigger detection
 
-### check_triggers.py
+### validate_captured_data.py
 
-Checks trigger code mapping for uniqueness and shows usage across codebase.
+Quick validation of captured data alignment between CSV and BDF triggers.
+
+**Requires:** `repeat_analyse` conda environment
 
 ```bash
-python scripts/check_triggers.py
+conda activate repeat_analyse
+python scripts/validate_captured_data.py
 ```
 
 **Features:**
-- Verifies all trigger codes are unique
-- Shows trigger code mapping (decimal, hex, binary)
-- Reports usage in paradigm files
-- Statistics (total triggers, code range)
+- CSV vs BDF trigger alignment
+- Code sequence verification
+- Expected vs actual counts
+- Perfect alignment confirmation
+
+### comprehensive_data_evaluation.py
+
+Complete evaluation report of collected experiment data.
+
+**Requires:** `repeat_analyse` conda environment
+
+```bash
+conda activate repeat_analyse
+python scripts/comprehensive_data_evaluation.py
+```
+
+**Features:**
+- Block completion status
+- Trigger count verification
+- Code distribution analysis
+- Complete data summary
+
+### generate_ground_truth_triggers.py
+
+Generate expected trigger sequence from experiment configuration.
+
+```bash
+python scripts/generate_ground_truth_triggers.py --participant-id 9999
+```
+
+**Features:**
+- Generates ground truth from config
+- Supports pre-run and post-run generation
+- JSON output for validation
 
 ## Testing Scripts
 
@@ -74,14 +107,6 @@ Send test triggers to Biosemi hardware.
 
 ```bash
 python scripts/test_biosemi_triggers.py --n-triggers 10
-```
-
-### test_randomization.py
-
-Test randomization protocol generation.
-
-```bash
-python scripts/test_randomization.py
 ```
 
 ### test_config_randomization.py
