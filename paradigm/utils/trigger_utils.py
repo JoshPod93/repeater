@@ -6,7 +6,7 @@ Based on best practices: send trigger to EEG stream first, then log to PsychoPy.
 Includes CSV mirror logging for trigger verification.
 """
 
-from psychopy import parallel, core
+from psychopy import core
 from typing import Optional, Tuple, List, TYPE_CHECKING
 from pathlib import Path
 import csv
@@ -64,14 +64,20 @@ class TriggerHandler:
         if self.csv_log_path is not None:
             self._init_csv_logging()
         
-        if self.use_triggers:
+        # Only initialize parallel port if Biosemi is NOT available
+        # (Biosemi serial port is the primary trigger method)
+        if self.use_triggers and self.biosemi_connection is None:
             try:
+                from psychopy import parallel
                 self.parallel_port = parallel.ParallelPort(address=port_address)
                 logger.info(f"Parallel port initialized at {hex(port_address)}")
             except Exception as e:
                 logger.warning(f"Could not initialize parallel port: {e}. Triggers disabled.")
                 self.use_triggers = False
                 self.parallel_port = None
+        else:
+            # Biosemi is available, skip parallel port initialization
+            self.parallel_port = None
     
     def _init_csv_logging(self):
         """Initialize CSV file for trigger logging."""

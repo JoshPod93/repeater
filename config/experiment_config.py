@@ -22,36 +22,16 @@ For complete parameter justifications with citations, see docs/config_justificat
 
 # Category 1: Body Parts
 BODY_PARTS_FULL = [
-    'hand', 'foot', 'elbow', 'knee', 
-    'shoulder', 'wrist', 'ankle', 'thumb',
-    'finger', 'toe', 'arm', 'leg'
+    'hand', 'foot', 'elbow', 
+    'knee', 'shoulder'
 ]
 
-# Category 2: Fruits
-FRUITS = [
-    'apple', 'banana', 'orange', 'grape',
-    'strawberry', 'lemon', 'peach', 'cherry',
-    'pear', 'mango', 'kiwi', 'plum'
-]
-
-# Category 3: Vegetables
+# Category 2: Vegetables
 VEGETABLES = [
     'carrot', 'tomato', 'broccoli', 'cucumber',
-    'pepper', 'lettuce', 'onion', 'potato',
-    'corn', 'pumpkin', 'celery', 'radish'
+    'pepper'
 ]
 
-# Category 4: Tools
-TOOLS = [
-    'hammer', 'screwdriver', 'wrench', 'saw',
-    'drill', 'pliers', 'chisel', 'clamp'
-]
-
-# Category 5: Animals
-ANIMALS = [
-    'dog', 'cat', 'bird', 'fish',
-    'rabbit', 'horse', 'elephant', 'lion'
-]
 
 # =============================================================================
 # EXPERIMENT DESIGN OPTIONS
@@ -61,30 +41,26 @@ ANIMALS = [
 # Select 5 items from each category for 10 concept-items total
 # 100 trials / 10 items = 10 trials per concept-item
 DESIGN_1_CATEGORY_A = BODY_PARTS_FULL[:5]  # ['hand', 'foot', 'elbow', 'knee', 'shoulder']
-DESIGN_1_CATEGORY_B = FRUITS[:5]           # ['apple', 'banana', 'orange', 'grape', 'strawberry']
+DESIGN_1_CATEGORY_B = VEGETABLES[:5]       # ['carrot', 'tomato', 'broccoli', 'cucumber', 'pepper']
 
-# --- Option 2: Body Parts vs Vegetables ---
+# --- Option 2: Body Parts vs Vegetables (same as Option 1 now) ---
 DESIGN_2_CATEGORY_A = BODY_PARTS_FULL[:5]
 DESIGN_2_CATEGORY_B = VEGETABLES[:5]
 
-# --- Option 3: Tools vs Fruits ---
-DESIGN_3_CATEGORY_A = TOOLS[:5]
-DESIGN_3_CATEGORY_B = FRUITS[:5]
+# --- Option 3: Single concept pair (like your speech paradigm) ---
+DESIGN_3_CATEGORY_A = ['hand']
+DESIGN_3_CATEGORY_B = ['carrot']
 
-# --- Option 4: Single concept pair (like your speech paradigm) ---
-DESIGN_4_CATEGORY_A = ['hand']
-DESIGN_4_CATEGORY_B = ['apple']
-
-# --- Option 5: Multiple pairs ---
-DESIGN_5_CATEGORY_A = ['hand', 'foot']
-DESIGN_5_CATEGORY_B = ['apple', 'banana']
+# --- Option 4: Multiple pairs ---
+DESIGN_4_CATEGORY_A = ['hand', 'foot']
+DESIGN_4_CATEGORY_B = ['carrot', 'tomato']
 
 # =============================================================================
 # SELECT ACTIVE DESIGN
 # =============================================================================
 
 # Change this to switch between designs
-ACTIVE_DESIGN = 1  # 1, 2, 3, 4, or 5
+ACTIVE_DESIGN = 1  # 1 = Body Parts vs Vegetables (5 items each)
 
 if ACTIVE_DESIGN == 1:
     CONCEPTS_CATEGORY_A = DESIGN_1_CATEGORY_A
@@ -98,9 +74,6 @@ elif ACTIVE_DESIGN == 3:
 elif ACTIVE_DESIGN == 4:
     CONCEPTS_CATEGORY_A = DESIGN_4_CATEGORY_A
     CONCEPTS_CATEGORY_B = DESIGN_4_CATEGORY_B
-elif ACTIVE_DESIGN == 5:
-    CONCEPTS_CATEGORY_A = DESIGN_5_CATEGORY_A
-    CONCEPTS_CATEGORY_B = DESIGN_5_CATEGORY_B
 
 # =============================================================================
 # TIMING PARAMETERS (seconds)
@@ -159,7 +132,7 @@ TRIAL_DURATION = (FIXATION_DURATION + PROMPT_DURATION + POST_CONCEPT_PAUSE +
 N_TRIALS = 100               # Total number of concept presentations (50 per category)
                               # With 10 concept-items (5 per category), this gives 10 trials per item
                               # Each presentation has N_BEEPS repetitions (8) = 800 total analysis trials
-                              # Set to 40-60 for pilot testing, 100-200 for full experiment
+                              # Set to 10 for testing, 100 for full experiment
 N_BLOCKS = 10                # Number of blocks (each block launched individually)
                               # 10 blocks × 10 trials = 100 total trials = 10 trials per concept-item
 TRIALS_PER_BLOCK = N_TRIALS // N_BLOCKS  # Trials per block (10 for 100 trials / 10 blocks)

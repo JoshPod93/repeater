@@ -290,7 +290,7 @@ def run_experiment_live(
     print("="*80)
     
     # Connect to Biosemi (REQUIRED - exit if fails, per reference protocol)
-    print("\n🔌 INITIALIZING EEG TRIGGER SYSTEM")
+    print("\n[EEG] INITIALIZING EEG TRIGGER SYSTEM")
     print("=" * 80)
     
     # Always use COM4 (per reference protocol)
@@ -299,7 +299,7 @@ def run_experiment_live(
     from paradigm.utils.biosemi_utils import open_serial_port
     biosemi_conn = open_serial_port(port='COM4')
     if biosemi_conn is None:
-        print("❌ CRITICAL ERROR: Failed to open serial port for EEG triggers!")
+        print("[ERROR] CRITICAL ERROR: Failed to open serial port for EEG triggers!")
         print("   The experiment cannot continue without trigger capability.")
         print("   Please check:")
         print(f"   1. COM port is correct (currently using: COM4)")
@@ -311,12 +311,12 @@ def run_experiment_live(
         return {}
     
     if not verify_biosemi_connection(biosemi_conn):
-        print("❌ CRITICAL ERROR: Biosemi connection verification failed!")
+        print("[ERROR] CRITICAL ERROR: Biosemi connection verification failed!")
         print("=" * 80)
         input("Press Enter to exit...")
         return {}
     
-    print("✅ EEG trigger system initialized successfully")
+    print("[OK] EEG trigger system initialized successfully")
     print("=" * 80)
     
     # Load configuration

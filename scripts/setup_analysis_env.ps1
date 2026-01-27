@@ -22,7 +22,7 @@ pip install pybdf
 pip install scikit-learn seaborn
 
 Write-Host ""
-Write-Host "✅ repeat_analyse environment created successfully!" -ForegroundColor Green
+Write-Host "[OK] repeat_analyse environment created successfully!" -ForegroundColor Green
 Write-Host ""
 Write-Host "To use it:" -ForegroundColor Yellow
 Write-Host "  conda activate repeat_analyse"

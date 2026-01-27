@@ -23,7 +23,7 @@ pip install pybdf
 pip install scikit-learn seaborn
 
 echo ""
-echo "✅ repeat_analyse environment created successfully!"
+echo "[OK] repeat_analyse environment created successfully!"
 echo ""
 echo "To use it:"
 echo "  conda activate repeat_analyse"

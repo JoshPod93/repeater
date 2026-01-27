@@ -84,6 +84,56 @@ Test randomization protocol generation.
 python scripts/test_randomization.py
 ```
 
+### test_config_randomization.py
+
+Quick test of randomization with current config (2 categories, 5 items each). Tests both single block and full protocol generation.
+
+```bash
+python scripts/test_config_randomization.py
+```
+
+**Features:**
+- Tests block sequence generation
+- Validates concept distribution
+- Checks full protocol (all blocks) balance
+- No psychopy dependency (can run without full environment)
+
+## Experiment Execution
+
+### run_all_blocks.ps1 / run_all_blocks.sh
+
+Runs all blocks sequentially for live experiments with automatic block detection. Waits for each block to complete before starting the next, with a 5-second pause between blocks.
+
+**Windows:**
+```powershell
+# Run all 10 blocks for participant 9999
+.\scripts\run_all_blocks.ps1 -ParticipantId 9999
+
+# Run specific number of blocks
+.\scripts\run_all_blocks.ps1 -ParticipantId 9999 -NBlocks 5
+
+# Custom pause duration
+.\scripts\run_all_blocks.ps1 -ParticipantId 9999 -PauseSeconds 10
+```
+
+**Linux/Mac:**
+```bash
+# Run all 10 blocks for participant 9999
+bash scripts/run_all_blocks.sh 9999
+
+# Run specific number of blocks
+bash scripts/run_all_blocks.sh 9999 5
+```
+
+**Features:**
+- Auto-detects next block (no manual block number needed)
+- Waits for each block to complete before starting next
+- Configurable pause between blocks (default: 5 seconds)
+- Error handling (stops on failure)
+- Progress indicators
+
+**Note:** The script runs `paradigm/semantic_paradigm_live.py` which automatically detects and runs the next available block for the participant.
+
 ## Analysis Environment Setup
 
 ### setup_analysis_env.ps1 / setup_analysis_env.sh
