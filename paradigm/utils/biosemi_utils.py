@@ -1,8 +1,9 @@
 """
 Biosemi utilities for EEG trigger communication.
+EXACT COPY from grasp/paradigm/paradigm_utils.py
 
 Handles serial port communication with Biosemi hardware for sending triggers
-to the EEG data stream. Based on patterns from grasp/paradigm project.
+to the EEG data stream.
 
 Author: A. Tates (JP)
 BCI-NE Lab, University of Essex
@@ -14,35 +15,34 @@ import time
 import warnings
 from typing import Optional
 
-# Global serial port instance (similar to grasp/paradigm pattern)
+# Global serial port instance
 _serial_port = None
 
+# Track trigger sending failures (for end-of-block reporting)
+_trigger_failures = []
 
-def connect_biosemi(port: str = 'COM3', baudrate: int = 115200) -> serial.Serial:
+
+def get_default_port():
+    """Get the default COM port for this system."""
+    return 'COM4'  # Change this to your preferred default port
+
+
+def open_serial_port(port=None, baudrate=115200):
     """
-    Open serial port connection to Biosemi hardware.
+    Open and return a persistent serial port connection.
+    EXACT COPY from grasp/paradigm/paradigm_utils.py
     
-    Opens port with 8N1 configuration (8 data bits, no parity, 1 stop bit).
-    Clears input/output buffers immediately after opening to prevent stale data.
+    Args:
+        port (str): COM port to use (default: from get_default_port())
+        baudrate (int): Baud rate (default: 115200)
     
-    Parameters
-    ----------
-    port : str
-        Serial port name (e.g., 'COM3' on Windows, '/dev/ttyUSB0' on Linux)
-    baudrate : int
-        Serial port baudrate (default: 115200)
-    
-    Returns
-    -------
-    serial.Serial
-        Opened serial port object
-    
-    Raises
-    ------
-    Exception
-        If port cannot be opened
+    Returns:
+        serial.Serial: Opened serial port object, or None if failed
     """
     global _serial_port
+    
+    if port is None:
+        port = get_default_port()
     
     try:
         _serial_port = serial.Serial(
@@ -60,46 +60,109 @@ def connect_biosemi(port: str = 'COM3', baudrate: int = 115200) -> serial.Serial
         _serial_port.flush()  # Flush any remaining data
         _serial_port.reset_input_buffer()  # Clear input buffer (if any)
         
-        print(f"[BIOSEMI] Serial port {port} opened successfully (buffers cleared)")
+        print(f"Serial port {port} opened successfully (buffers cleared)")
         return _serial_port
+    except Exception as e:
+        print(f"Error opening serial port {port}: {e}")
+        return None
+
+
+def close_serial_port(block_folder_path=None):
+    """Close the persistent serial port connection.
+    EXACT COPY from grasp/paradigm/paradigm_utils.py
+    
+    Args:
+        block_folder_path (str, optional): Path to block folder for saving trigger failure log
+    """
+    global _serial_port
+    
+    if _serial_port is None or not _serial_port.is_open:
+        return
+    
+    try:
+        # Reset output buffer before closing
+        _serial_port.reset_output_buffer()
+        _serial_port.flush()
+        
+        # Close the port
+        _serial_port.close()
+        print("Serial port closed")
+        
+        # Report trigger failures if any
+        if _trigger_failures:
+            print(f"\n⚠️  WARNING: {len(_trigger_failures)} trigger(s) failed during this block:")
+            for failure in _trigger_failures:
+                print(f"   - {failure['marker']} (value {failure['value']}) at {failure['time']:.2f}s")
+            
+            # Optionally save to file
+            if block_folder_path:
+                try:
+                    import os
+                    failure_log_path = os.path.join(block_folder_path, 'trigger_failures.txt')
+                    with open(failure_log_path, 'w') as f:
+                        f.write(f"Trigger Failures Report\n")
+                        f.write(f"Total failures: {len(_trigger_failures)}\n\n")
+                        for failure in _trigger_failures:
+                            f.write(f"{failure['marker']} (value {failure['value']}) at {failure['time']:.2f}s\n")
+                    print(f"   Failure log saved to: {failure_log_path}")
+                except Exception as e:
+                    print(f"   Could not save failure log: {e}")
+            
+            # Clear failures list
+            _trigger_failures.clear()
         
     except Exception as e:
-        error_msg = f"Error opening serial port {port}: {e}"
-        print(f"[BIOSEMI ERROR] {error_msg}")
-        raise RuntimeError(error_msg) from e
+        print(f"Error closing serial port: {e}")
+    
+    _serial_port = None
 
 
-def verify_biosemi_connection(connection: serial.Serial) -> bool:
+def _send_eeg_trigger(marker_value, marker_name=None):
     """
-    Verify Biosemi connection is active and ready.
+    Send a trigger byte via the already-open serial port.
+    EXACT COPY from grasp/paradigm/paradigm_utils.py
     
-    Parameters
-    ----------
-    connection : serial.Serial
-        Serial port connection object
+    Much faster than opening/closing for each trigger.
     
-    Returns
-    -------
-    bool
-        True if connection is valid and open, False otherwise
+    Buffer Management:
+    - flush() is called after write() to ensure immediate transmission
+    - This flushes: Python pyserial buffer → OS serial driver buffer → USB chip buffer
+    - Without flush(), bytes may be buffered and sent in batches, causing timing issues
+    - flush() overhead is minimal (<0.1ms) compared to the 5ms delay in send_biosemi_trigger()
+    
+    Args:
+        marker_value (int): Trigger value (0-255)
+        marker_name (str): Human-readable name for logging
     """
-    if connection is None:
+    global _serial_port
+    
+    if _serial_port is None or not _serial_port.is_open:
+        # CRITICAL: Don't silently fail - this indicates a serious problem
+        error_msg = f"Serial port not open. Call open_serial_port() first. Attempted to send trigger {marker_value} ({marker_name})"
+        warnings.warn(error_msg)
         return False
     
     try:
-        return connection.is_open
-    except Exception:
+        # Send the marker value as a single byte
+        _serial_port.write(bytes([marker_value]))
+        _serial_port.flush()  # CRITICAL: Ensure immediate transmission to prevent buffering
+
+        return True
+
+    except Exception as e:
+        warnings.warn(f"Could not send marker via serial port: {e}")
         return False
 
 
-def send_biosemi_trigger(connection: serial.Serial, trigger_code: int) -> bool:
+def send_biosemi_trigger(trigger_code: int, marker_name: Optional[str] = None) -> bool:
     """
     Send trigger byte to Biosemi via serial port.
+    Uses same implementation style as reference project.
     
-    Critical steps:
-    1. Write trigger byte
-    2. Flush immediately (prevents buffering)
-    3. Wait 5ms (prevents rapid-fire errors)
+    Critical steps (same as reference):
+    1. Write trigger byte (via _send_eeg_trigger)
+    2. Flush immediately (prevents buffering) - done in _send_eeg_trigger
+    3. Wait 5ms (prevents rapid-fire errors) - done here
     
     Buffer Management:
     - flush() is called after write() to ensure immediate transmission
@@ -107,75 +170,58 @@ def send_biosemi_trigger(connection: serial.Serial, trigger_code: int) -> bool:
     - Without flush(), bytes may be buffered and sent in batches, causing timing issues
     - The 5ms delay prevents rapid-fire trigger errors that Biosemi hardware can't handle
     
+    Note: The 5ms delay is critical for BioSemi hardware to properly register each trigger.
+    Without proper spacing, triggers can be dropped or corrupted, especially when sent
+    in rapid succession.
+    
     Parameters
     ----------
-    connection : serial.Serial
-        Serial port connection object
     trigger_code : int
-        Trigger code to send (0-255)
+        Trigger code to send (0-255) - uses OUR experiment's codes
+    marker_name : str, optional
+        Human-readable name for logging
     
     Returns
     -------
     bool
         True if successful, False otherwise
     """
-    if connection is None or not connection.is_open:
-        warnings.warn(
-            f"Serial port not open. Cannot send trigger {trigger_code}. "
-            f"Call connect_biosemi() first."
-        )
+    # Validate trigger code range
+    if trigger_code < 0 or trigger_code > 255:
+        warnings.warn(f"Trigger code {trigger_code} out of range (0-255)")
         return False
     
+    # Send to EEG hardware (same implementation style as reference)
+    send_success = _send_eeg_trigger(trigger_code, marker_name)
+    
+    if not send_success:
+        return False
+    
+    # Add 5ms delay to prevent trigger dropping due to rapid hardware timing
+    # This delay is critical for BioSemi hardware to properly register each trigger
+    time.sleep(0.005)
+    
+    return True
+
+
+# Compatibility aliases (for existing code)
+def connect_biosemi(port: str = None, baudrate: int = 115200) -> serial.Serial:
+    """Alias for open_serial_port() for compatibility."""
+    return open_serial_port(port=port, baudrate=baudrate)
+
+
+def verify_biosemi_connection(connection: serial.Serial) -> bool:
+    """Verify Biosemi connection is active and ready."""
+    if connection is None:
+        return False
     try:
-        # Validate trigger code range
-        if trigger_code < 0 or trigger_code > 255:
-            warnings.warn(f"Trigger code {trigger_code} out of range (0-255)")
-            return False
-        
-        # Send the trigger value as a single byte
-        connection.write(bytes([trigger_code]))
-        connection.flush()  # CRITICAL: Ensure immediate transmission to prevent buffering
-        
-        # Wait 5ms to prevent rapid-fire trigger errors
-        # This delay is critical for BioSemi hardware to properly register each trigger
-        time.sleep(0.005)
-        
-        return True
-        
-    except Exception as e:
-        warnings.warn(f"Could not send trigger {trigger_code} via serial port: {e}")
+        return connection.is_open
+    except Exception:
         return False
 
 
 def close_biosemi_connection(connection: Optional[serial.Serial] = None):
-    """
-    Cleanly close Biosemi connection.
-    
-    Resets output buffer, closes port, and clears global instance.
-    
-    Parameters
-    ----------
-    connection : serial.Serial, optional
-        Connection to close. If None, uses global instance.
-    """
-    global _serial_port
-    
-    # Use provided connection or global instance
-    port_to_close = connection if connection is not None else _serial_port
-    
-    if port_to_close is not None and port_to_close.is_open:
-        try:
-            # Reset output buffer before closing
-            port_to_close.reset_output_buffer()
-            port_to_close.flush()
-            
-            # Close the port
-            port_to_close.close()
-            print("[BIOSEMI] Serial port closed")
-            
-        except Exception as e:
-            warnings.warn(f"Error closing serial port: {e}")
-    
-    # Clear global instance if it was closed
-    if port_to_close == _serial_port:
-        _serial_port = None
+    """Alias for close_serial_port() for compatibility."""
+    close_serial_port()
+
+

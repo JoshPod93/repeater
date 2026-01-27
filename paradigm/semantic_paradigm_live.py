@@ -91,14 +91,14 @@ def run_visualization_period(
     beep_timestamps.append(timestamp)
     
     # Visualization period with beeps (fixation stays on screen)
-    # Get beep trigger codes dynamically based on n_beeps
+    # Get beep trigger codes dynamically based on n_beeps (OUR codes: 31-38)
     beep_trigger_codes = get_beep_codes(n_beeps, max_beeps=8)
     
     for beep_idx in range(n_beeps):
         # Redraw fixation (keeps it visible during beeps)
         display.show_fixation()
         
-        # Use dynamic beep code
+        # Use dynamic beep code (OUR codes: 31-38)
         trigger_code = beep_trigger_codes[beep_idx]
         timestamp, _ = trigger_handler.send_trigger(
             trigger_code,
@@ -188,7 +188,7 @@ def run_single_trial_live(
     progress_text = f"Trial {trial_num}/{total_trials}"
     display.show_concept(concept, show_progress=True, progress_text=progress_text)
     
-    # Send category-specific trigger
+    # Send category-specific trigger (OUR codes)
     trigger_code = (TRIGGER_CODES['concept_category_a'] if category == 'A' 
                    else TRIGGER_CODES['concept_category_b'])
     event_name = f'concept_{concept}_category_{category}'
@@ -250,7 +250,7 @@ def run_single_trial_live(
 
 def run_experiment_live(
     participant_id: str,
-    biosemi_port: str = 'COM3',
+    biosemi_port: str = None,  # Ignored - always uses COM4
     config_path: Optional[Path] = None,
     n_trials: Optional[int] = None,
     n_beeps: Optional[int] = None,
@@ -267,7 +267,7 @@ def run_experiment_live(
     participant_id : str
         Participant identifier
     biosemi_port : str
-        Serial port for Biosemi (default: COM3)
+        Serial port for Biosemi (ignored - always uses COM4)
     config_path : Path, optional
         Path to config file
     n_trials : int, optional
@@ -289,17 +289,35 @@ def run_experiment_live(
     print(f"Mode: LIVE (Biosemi EEG capture)")
     print("="*80)
     
-    # Connect to Biosemi
-    biosemi_conn = None
-    try:
-        biosemi_conn = connect_biosemi(port=biosemi_port)
-        if not verify_biosemi_connection(biosemi_conn):
-            raise RuntimeError("Biosemi connection verification failed")
-        print(f"[BIOSEMI] Connected to {biosemi_port}")
-    except Exception as e:
-        print(f"[WARNING] Biosemi connection failed: {e}")
-        print("[WARNING] Continuing without Biosemi (triggers will be simulated)")
-        # Continue anyway (for testing without hardware)
+    # Connect to Biosemi (REQUIRED - exit if fails, per reference protocol)
+    print("\n🔌 INITIALIZING EEG TRIGGER SYSTEM")
+    print("=" * 80)
+    
+    # Always use COM4 (per reference protocol)
+    print(f"Attempting to open serial port: COM4")
+    
+    from paradigm.utils.biosemi_utils import open_serial_port
+    biosemi_conn = open_serial_port(port='COM4')
+    if biosemi_conn is None:
+        print("❌ CRITICAL ERROR: Failed to open serial port for EEG triggers!")
+        print("   The experiment cannot continue without trigger capability.")
+        print("   Please check:")
+        print(f"   1. COM port is correct (currently using: COM4)")
+        print("   2. Hardware is connected and powered on")
+        print("   3. No other software is using the port")
+        print("   4. Device drivers are properly installed")
+        print("=" * 80)
+        input("Press Enter to exit...")
+        return {}
+    
+    if not verify_biosemi_connection(biosemi_conn):
+        print("❌ CRITICAL ERROR: Biosemi connection verification failed!")
+        print("=" * 80)
+        input("Press Enter to exit...")
+        return {}
+    
+    print("✅ EEG trigger system initialized successfully")
+    print("=" * 80)
     
     # Load configuration
     if config_path is None:
@@ -482,13 +500,21 @@ def run_experiment_live(
         print("\n[TRIGGER] Fallback mode (triggers simulated, Biosemi not connected)")
     print(f"[TRIGGER] CSV logging enabled: {csv_log_path}")
     
-    # Create window (fullscreen for live experiments)
+    # Send Block Start trigger IMMEDIATELY after connection (same as reference project)
+    # This should appear in ActiView right away
+    block_start_code = get_block_start_code(trigger_block_num)
+    from paradigm.utils.biosemi_utils import send_biosemi_trigger
+    send_biosemi_trigger(block_start_code, f'block_{trigger_block_num}_start')
+    print(f"[TRIGGER] Block {trigger_block_num} start (trigger {block_start_code}) sent immediately after connection")
+    
+    # Create window (match simulation exactly - use config setting)
     win = create_window(
         size=config.get('WINDOW_SIZE', (1024, 768)),
         color=config.get('BACKGROUND_COLOR', 'black'),
-        fullscreen=True  # Fullscreen for live experiments
+        fullscreen=config.get('FULLSCREEN', False)  # Use config setting (same as simulation)
     )
-    print(f"[DISPLAY] Window created: {config.get('WINDOW_SIZE', (1024, 768))} (fullscreen)")
+    fullscreen_status = "fullscreen" if config.get('FULLSCREEN', False) else "windowed"
+    print(f"[DISPLAY] Window created: {config.get('WINDOW_SIZE', (1024, 768))} ({fullscreen_status})")
     
     # Create display manager
     display_config = {
@@ -520,11 +546,11 @@ def run_experiment_live(
     trial_data_list = []
     metadata = create_metadata(participant_id, config)
     
-    # Clear screen and show warning
+    # Clear screen and show warning (match simulation exactly)
     display.clear_screen()
     core.wait(0.1)  # Brief pause to ensure screen is cleared
     print("\n[WARNING] Experiment starting soon...")
-    warning_text = "WARNING: Experiment starting soon.\n\nPlease remain still and focus.\n\nPress ESCAPE to exit."
+    warning_text = "WARNING: Experiment starting soon.\n\nPress ESCAPE to exit."
     display.show_text(warning_text, height=0.05, color='yellow')
     core.wait(2.0)  # Show warning for 2 seconds
     
@@ -535,7 +561,7 @@ def run_experiment_live(
         if 'escape' in keys:
             print("\n[EXIT] Experiment terminated by user")
             if biosemi_conn:
-                close_biosemi_connection(biosemi_conn)
+                close_serial_port()
             win.close()
             core.quit()
             return {}
@@ -593,13 +619,13 @@ def run_experiment_live(
     
     print(f"\n[BLOCK {block_num}] Running {len(block_trials)} trials (global trials {global_trial_start}-{global_trial_start + len(block_trials) - 1})")
     
-    # Block start (use 1-indexed for trigger codes)
+    # Block start trigger was already sent immediately after connection
+    # Log it here for CSV/timing purposes (but trigger was sent earlier)
     block_start_code = get_block_start_code(trigger_block_num)
-    timestamp, _ = trigger_handler.send_trigger(
-        block_start_code,
-        event_name=f'block_{trigger_block_num}_start'
-    )
-    print(f"[TRIGGER] Block {trigger_block_num} start (trigger {block_start_code}) at {timestamp:.3f}s")
+    timestamp = experiment_clock.getTime()
+    # Log to CSV (trigger was already sent to Biosemi earlier)
+    trigger_handler._log_trigger_to_csv(timestamp, block_start_code, f'block_{trigger_block_num}_start', True)
+    print(f"[TRIGGER] Block {trigger_block_num} start (trigger {block_start_code}) logged at {timestamp:.3f}s (sent earlier)")
     
     # Run trials in this block
     # Trial numbers are global (1-indexed across all blocks)
@@ -661,7 +687,7 @@ def run_experiment_live(
     
     total_duration = experiment_clock.getTime()
     
-    # End screen (brief display, then auto-quit)
+    # End screen (brief display, then auto-quit) - match simulation exactly
     display.show_text(
         "Experiment Complete!\n\nThank you for participating.",
         height=0.06
@@ -683,20 +709,6 @@ def run_experiment_live(
         total_duration=total_duration,
         saved_files=saved_files
     )
-    
-    # Verification checklist
-    print("\n" + "="*80)
-    print("VERIFICATION CHECKLIST")
-    print("="*80)
-    print("[ ] All triggers logged correctly")
-    print("[ ] Display stimuli shown correctly")
-    print("[ ] Beeps played at correct intervals")
-    print("[ ] Data saved to files")
-    print("[ ] Timestamps recorded accurately")
-    print(f"\nCheck saved files:")
-    for file_type, file_path in saved_files.items():
-        print(f"  {file_type.upper()}: {file_path}")
-    print("="*80)
     
     # Cleanup
     trigger_handler.close()

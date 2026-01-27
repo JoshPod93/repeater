@@ -22,6 +22,13 @@ repeater/
 │
 ├── scripts/                  # Utility scripts
 │   ├── git_commit.py         # Git commit tool
+│   ├── validate_triggers.py  # BDF vs CSV trigger validation
+│   ├── check_triggers.py     # Trigger code mapping checker
+│   ├── test_biosemi_connection.py  # Biosemi connection test
+│   ├── test_biosemi_triggers.py    # Biosemi trigger test
+│   ├── test_randomization.py       # Randomization test
+│   ├── setup_analysis_env.ps1      # Analysis env setup (Windows)
+│   ├── setup_analysis_env.sh       # Analysis env setup (Linux/Mac)
 │   └── README.md             # Scripts documentation
 │
 ├── paradigm/                 # Main experiment code
@@ -48,6 +55,8 @@ repeater/
 │
 ├── analysis/                 # Analysis scripts
 │   └── tangent_space_logistic_regressor_classifier.py
+│
+├── requirements_analysis.txt # Analysis environment dependencies
 │
 ├── docs/                     # Documentation
 │   ├── git_and_trigger_guide.md
@@ -115,6 +124,35 @@ python scripts/test_biosemi_connection.py --port COM3
 # Test trigger sending
 python scripts/test_biosemi_triggers.py --port COM3 --n-triggers 10
 ```
+
+### 2. Setup Analysis Environment (Optional)
+
+For validation, preprocessing, and analysis tasks, use a separate environment:
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\setup_analysis_env.ps1
+```
+
+**Linux/Mac:**
+```bash
+bash scripts/setup_analysis_env.sh
+```
+
+**Manual setup:**
+```bash
+conda create -n repeat_analyse python=3.10 -y
+conda activate repeat_analyse
+pip install -r requirements_analysis.txt
+```
+
+**Using the analysis environment:**
+```bash
+conda activate repeat_analyse
+python scripts/validate_triggers.py --participant-id 9999
+```
+
+See `scripts/README_analysis_env.md` for more details.
 
 ## Development Guidelines
 

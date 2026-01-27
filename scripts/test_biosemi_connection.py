@@ -12,10 +12,10 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from paradigm.utils import connect_biosemi, verify_biosemi_connection, close_biosemi_connection
+from paradigm.utils.biosemi_utils import open_serial_port, verify_biosemi_connection, close_serial_port
 
 
-def test_connection(port: str = 'COM3'):
+def test_connection(port: str = None):
     """
     Test Biosemi connection.
     
@@ -35,25 +35,32 @@ def test_connection(port: str = 'COM3'):
     print(f"Testing connection to {port}...")
     print()
     
+    # Always use COM4
+    port = 'COM4'
+    
     biosemi_conn = None
     try:
-        biosemi_conn = connect_biosemi(port=port)
+        biosemi_conn = open_serial_port(port=port)
+        
+        if biosemi_conn is None:
+            print(f"[FAIL] Failed to open serial port {port}")
+            return False
         
         if verify_biosemi_connection(biosemi_conn):
             print(f"[OK] Biosemi connected successfully to {port}")
             print(f"[OK] Connection verified and ready")
-            close_biosemi_connection(biosemi_conn)
+            close_serial_port()
             return True
         else:
             print(f"[FAIL] Biosemi connection verification failed")
             if biosemi_conn:
-                close_biosemi_connection(biosemi_conn)
+                close_serial_port()
             return False
             
     except Exception as e:
         print(f"[ERROR] Connection failed: {e}")
         if biosemi_conn:
-            close_biosemi_connection(biosemi_conn)
+            close_serial_port()
         return False
 
 
@@ -74,8 +81,8 @@ Examples:
     parser.add_argument(
         '--port', '-p',
         type=str,
-        default='COM3',
-        help='Serial port for Biosemi (default: COM3)'
+        default=None,
+        help='Serial port for Biosemi (default: COM4 from config)'
     )
     
     args = parser.parse_args()

@@ -60,8 +60,8 @@ Examples:
     parser.add_argument(
         '--biosemi-port',
         type=str,
-        default='COM3',
-        help='Serial port for Biosemi (default: COM3, only used in live mode)'
+        default=None,
+        help='Serial port for Biosemi (default: COM4 from config, only used in live mode)'
     )
     
     parser.add_argument(

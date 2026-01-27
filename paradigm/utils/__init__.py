@@ -58,9 +58,13 @@ from .trigger_utils import (
 )
 
 from .biosemi_utils import (
+    get_default_port,
+    open_serial_port,
+    close_serial_port,
+    send_biosemi_trigger,
+    # Compatibility aliases
     connect_biosemi,
     verify_biosemi_connection,
-    send_biosemi_trigger,
     close_biosemi_connection
 )
 
@@ -112,9 +116,13 @@ __all__ = [
     # Timing utilities
     'jittered_wait',
     'get_jittered_duration',
-    # Biosemi utilities
+    # Biosemi utilities (same implementation style as reference, our codes)
+    'get_default_port',
+    'open_serial_port',
+    'close_serial_port',
+    'send_biosemi_trigger',
+    # Compatibility aliases
     'connect_biosemi',
     'verify_biosemi_connection',
-    'send_biosemi_trigger',
     'close_biosemi_connection'
 ]

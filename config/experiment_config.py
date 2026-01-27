@@ -221,7 +221,7 @@ BEEP_DURATION = 0.1          # Duration of each beep (seconds)
 # BIOSEMI CONFIGURATION
 # =============================================================================
 
-BIOSEMI_PORT = 'COM3'        # Serial port for Biosemi (Windows: COM3, COM4, etc.)
+BIOSEMI_PORT = 'COM4'        # Serial port for Biosemi (Windows: COM3, COM4, etc.)
 BIOSEMI_BAUDRATE = 115200    # Serial port baudrate
 BIOSEMI_ENABLED = True       # Enable Biosemi connection (for live experiments)
 

@@ -11,6 +11,7 @@ from typing import Optional, Tuple, List, TYPE_CHECKING
 from pathlib import Path
 import csv
 import logging
+import time
 from datetime import datetime
 
 if TYPE_CHECKING:
@@ -131,17 +132,22 @@ class TriggerHandler:
         success = False
         
         # Priority 1: Send to Biosemi data stream FIRST (if connected)
+        # Uses same implementation style as reference (write, flush, 5ms delay)
+        # But uses OUR trigger codes directly
         if self.biosemi_connection is not None:
             try:
                 from .biosemi_utils import send_biosemi_trigger
-                biosemi_success = send_biosemi_trigger(self.biosemi_connection, trigger_code)
+                # Send trigger directly using our codes (same implementation style as reference)
+                biosemi_success = send_biosemi_trigger(trigger_code, event_name)
                 if biosemi_success:
                     success = True
-                    logger.debug(f"Trigger {trigger_code} sent to Biosemi at {timestamp:.3f}s")
+                    logger.debug(f"Trigger {trigger_code} ({event_name or 'unnamed'}) sent to Biosemi at {timestamp:.3f}s")
                 else:
                     logger.warning(f"Failed to send trigger {trigger_code} to Biosemi")
             except Exception as e:
                 logger.warning(f"Error sending trigger {trigger_code} to Biosemi: {e}")
+                import traceback
+                traceback.print_exc()
         
         # Priority 2: Send to parallel port (if enabled and Biosemi didn't succeed)
         if not success and self.use_triggers and self.parallel_port:
@@ -251,6 +257,7 @@ class TriggerHandler:
 
 
 # Standard trigger codes for semantic visualization paradigm
+# OUR experiment's codes (different from reference project)
 # Organized with spacing to avoid buffer issues and allow expansion
 TRIGGER_CODES = {
     # Trial-level events (base codes)
