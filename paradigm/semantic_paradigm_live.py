@@ -50,7 +50,9 @@ def run_visualization_period(
     beep_sound: sound.Sound,
     trigger_handler: TriggerHandler,
     trial_num: int,
-    total_trials: int
+    total_trials: int,
+    block_trial_num: int = None,
+    trials_per_block: int = None
 ) -> List[float]:
     """
     Run visualization period with beeps.
@@ -126,7 +128,9 @@ def run_single_trial_live(
     trigger_handler: TriggerHandler,
     beep_sound: sound.Sound,
     trial_num: int,
-    total_trials: int
+    total_trials: int,
+    block_trial_num: int = None,
+    trials_per_block: int = None
 ) -> Dict[str, any]:
     """
     Run a single trial with live EEG capture.
@@ -221,7 +225,9 @@ def run_single_trial_live(
         beep_sound=beep_sound,
         trigger_handler=trigger_handler,
         trial_num=trial_num,
-        total_trials=total_trials
+        total_trials=total_trials,
+        block_trial_num=block_trial_num,
+        trials_per_block=trials_per_block
     )
     
     trial_data['timestamps']['beep_start'] = beep_timestamps[0]
@@ -640,6 +646,10 @@ def run_experiment_live(
             break
         
         # Run trial
+        # Calculate block-local trial number (1-indexed within block)
+        block_trial_num = trial_idx + 1
+        trials_per_block = len(block_trials)
+        
         trial_data = run_single_trial_live(
             win=win,
             display=display,
@@ -648,7 +658,9 @@ def run_experiment_live(
             trigger_handler=trigger_handler,
             beep_sound=beep_sound,
             trial_num=global_trial_num,
-            total_trials=n_trials_total
+            total_trials=n_trials_total,
+            block_trial_num=block_trial_num,
+            trials_per_block=trials_per_block
         )
         
         trial_data_list.append(trial_data)

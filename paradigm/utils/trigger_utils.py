@@ -342,8 +342,10 @@ def get_block_start_code(block_num: int) -> int:
     """
     Get unique trigger code for block start.
     
-    Block N start = 150 + N
-    Range: 151-159 (supports up to 9 blocks)
+    Block N start = 60 + N
+    Range: 61-69 (supports up to 9 blocks)
+    
+    Note: Changed from 150+N to 60+N to avoid overlap with trial codes (101-199)
     
     Parameters
     ----------
@@ -357,7 +359,7 @@ def get_block_start_code(block_num: int) -> int:
     """
     if block_num < 1 or block_num > 9:
         raise ValueError(f"Block number must be between 1 and 9, got {block_num}")
-    return 150 + block_num
+    return 60 + block_num
 
 
 def get_beep_code(beep_num: int, max_beeps: int = 8) -> int:
@@ -409,8 +411,10 @@ def get_block_end_code(block_num: int) -> int:
     """
     Get unique trigger code for block end.
     
-    Block N end = 250 + N
-    Range: 251-259 (supports up to 9 blocks)
+    Block N end = 70 + N
+    Range: 71-79 (supports up to 9 blocks)
+    
+    Note: Changed from 250+N to 70+N to avoid overlap with trial codes (201-299)
     
     Parameters
     ----------
@@ -424,7 +428,7 @@ def get_block_end_code(block_num: int) -> int:
     """
     if block_num < 1 or block_num > 9:
         raise ValueError(f"Block number must be between 1 and 9, got {block_num}")
-    return 250 + block_num
+    return 70 + block_num
 
 
 def create_trigger_handler(port_address: int = 0x0378, use_triggers: bool = False,
