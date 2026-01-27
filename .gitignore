@@ -45,6 +45,7 @@ sim_data/sim_results/
 *.hdf5
 *.fif
 *.fdt
+*.bdf
 
 # Logs
 *.log
