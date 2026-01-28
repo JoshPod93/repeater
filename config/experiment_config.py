@@ -21,15 +21,15 @@ For complete parameter justifications with citations, see docs/config_justificat
 # You can add as many categories as needed
 
 # Category 1: Body Parts
+# Selected based on behavioral analysis - most easily guessed body items
 BODY_PARTS_FULL = [
-    'hand', 'foot', 'elbow', 
-    'knee', 'shoulder'
+    'eye', 'nose', 'ear', 'face', 'leg'
 ]
 
-# Category 2: Vegetables
+# Category 2: Fruits/Vegetables
+# Selected based on behavioral analysis - optimal fruits/veg items
 VEGETABLES = [
-    'carrot', 'tomato', 'broccoli', 'cucumber',
-    'pepper'
+    'grape', 'lime', 'pear', 'corn', 'pea'
 ]
 
 
@@ -40,8 +40,8 @@ VEGETABLES = [
 # --- Option 1: Two-Category Design (most common for BCI) ---
 # Select 5 items from each category for 10 concept-items total
 # 100 trials / 10 items = 10 trials per concept-item
-DESIGN_1_CATEGORY_A = BODY_PARTS_FULL[:5]  # ['hand', 'foot', 'elbow', 'knee', 'shoulder']
-DESIGN_1_CATEGORY_B = VEGETABLES[:5]       # ['carrot', 'tomato', 'broccoli', 'cucumber', 'pepper']
+DESIGN_1_CATEGORY_A = BODY_PARTS_FULL[:5]  # ['eye', 'nose', 'ear', 'face', 'leg']
+DESIGN_1_CATEGORY_B = VEGETABLES[:5]       # ['grape', 'lime', 'pear', 'corn', 'pea']
 
 # --- Option 2: Body Parts vs Vegetables (same as Option 1 now) ---
 DESIGN_2_CATEGORY_A = BODY_PARTS_FULL[:5]
