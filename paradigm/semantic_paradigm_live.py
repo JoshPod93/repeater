@@ -482,13 +482,20 @@ def run_experiment_live(
         next_block_num = get_next_block_number(subject_folder)
         block_num = next_block_num
         
+        # Check if all blocks are complete - recommend changing participant ID
+        n_blocks = protocol['config']['N_BLOCKS']
+        if block_num >= n_blocks:
+            print(f"\n[ERROR] All {n_blocks} blocks have been completed for participant ID '{participant_id}'.")
+            print(f"[INFO] Found {len(existing_blocks)} block(s), next would be block {block_num} (exceeds configured {n_blocks} blocks)")
+            print(f"\n[RECOMMENDATION] Please use a different participant ID for a new session.")
+            print(f"[INFO] Example: --participant-id <new_id>")
+            raise ValueError(
+                f"All {n_blocks} blocks completed for participant '{participant_id}'. "
+                f"Please use a different participant ID for a new session."
+            )
+        
         if verbose:
-            n_blocks = protocol['config']['N_BLOCKS']
             print(f"[AUTO] Next block number: {block_num} (will be saved as Block_{block_num:04d})")
-            if block_num >= n_blocks:
-                print(f"[WARNING] Block {block_num} exceeds configured {n_blocks} blocks")
-                print(f"[INFO] All {n_blocks} blocks completed for this participant.")
-                return {}
     
     # Convert block_num to 1-indexed for trigger codes (block_num is 0-indexed for folders)
     trigger_block_num = block_num + 1
