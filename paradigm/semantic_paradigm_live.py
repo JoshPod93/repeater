@@ -182,24 +182,7 @@ def run_single_trial_live(
     trial_data['timestamps']['trial_start'] = timestamp
     print(f"  Trial {trial_num} start (trigger {trial_start_code}) at {timestamp:.3f}s")
     
-    # 1. FIXATION (NO JITTER - important timing)
-    display.show_fixation()
-    timestamp, _ = trigger_handler.send_trigger(
-        TRIGGER_CODES['fixation'],
-        event_name='fixation'
-    )
-    trial_data['timestamps']['fixation'] = timestamp
-    print(f"  Fixation at {timestamp:.3f}s")
-    core.wait(config.get('FIXATION_DURATION', 2.0))
-    
-    # Post-fixation pause (JITTERED - pause event)
-    display.clear_screen()
-    use_jitter = config.get('USE_JITTER', True)
-    jitter_range = config.get('JITTER_RANGE', 0.1)
-    post_fixation_pause = config.get('POST_FIXATION_PAUSE', 0.5)
-    core.wait(jittered_wait(post_fixation_pause, jitter_range) if use_jitter else post_fixation_pause)
-    
-    # 2. TRIAL INDICATOR (centered text, like concept word)
+    # 1. TRIAL INDICATOR (centered text, like concept word) - FIRST ELEMENT
     display.show_trial_indicator(trial_num, total_trials)
     timestamp, _ = trigger_handler.send_trigger(
         TRIGGER_CODES['trial_indicator'],
@@ -234,7 +217,7 @@ def run_single_trial_live(
     post_concept_word_pause = config.get('POST_FIXATION_PAUSE', 0.5)  # Use same pause duration
     core.wait(jittered_wait(post_concept_word_pause, jitter_range) if use_jitter else post_concept_word_pause)
     
-    # 4. VISUAL MASK (after concept word)
+    # 3. VISUAL MASK (after concept word)
     display.show_mask()
     timestamp, _ = trigger_handler.send_trigger(
         TRIGGER_CODES['mask'],
@@ -250,12 +233,18 @@ def run_single_trial_live(
     post_mask_pause = config.get('POST_MASK_PAUSE', 0.5)
     core.wait(jittered_wait(post_mask_pause, jitter_range) if use_jitter else post_mask_pause)
     
-    # Post-concept pause before beeps (JITTERED - pause event)
+    # Pause after mask (JITTERED - pause event)
     post_concept_pause = config.get('POST_CONCEPT_PAUSE', 3.0)
     core.wait(jittered_wait(post_concept_pause, jitter_range) if use_jitter else post_concept_pause)
     
-    # 5. FIXATION CROSS (for beep presentation - stays on during beeps)
+    # 4. FIXATION CROSS (for beep presentation - stays on during beeps)
     display.show_fixation()
+    timestamp, _ = trigger_handler.send_trigger(
+        TRIGGER_CODES['fixation'],
+        event_name='fixation'
+    )
+    trial_data['timestamps']['fixation'] = timestamp
+    print(f"  Fixation at {timestamp:.3f}s")
     
     # 3. VISUALIZATION PERIOD (fixation stays on screen)
     n_beeps = config.get('N_BEEPS', 8)
