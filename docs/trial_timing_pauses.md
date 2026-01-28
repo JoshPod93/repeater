@@ -39,8 +39,8 @@ Complete list of all pauses, waits, and intervals during a single trial period.
 - **Visual**: Pattern mask (noise stimulus) to prevent afterimages
 - **Purpose**: Erase visual afterimages from concept presentation
 
-### 4. **Post-Concept Pause** ⚠️ JITTERED
-- **Duration**: `POST_CONCEPT_PAUSE = 1.0` seconds (±10% jitter)
+### 4. **Post-Concept Pause** [JITTERED]
+- **Duration**: `POST_CONCEPT_PAUSE = 1.0` seconds (+/-10% jitter)
 - **Jitter**: **YES** - Uses `jittered_wait()` with `JITTER_RANGE = 0.1`
 - **Actual Range**: 0.9 - 1.1 seconds (randomized per trial)
 - **Location**: After mask disappears, before beeps start
