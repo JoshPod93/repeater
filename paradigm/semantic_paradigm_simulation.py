@@ -193,7 +193,7 @@ def run_single_trial_simulation(
     post_fixation_pause = config.get('POST_FIXATION_PAUSE', 0.5)
     core.wait(jittered_wait(post_fixation_pause, jitter_range) if use_jitter else post_fixation_pause)
     
-    # 2. TRIAL INDICATOR (shows trial number first, before concept)
+    # 2. TRIAL INDICATOR (centered text, like concept word)
     display.show_trial_indicator(trial_num, total_trials)
     timestamp, _ = trigger_handler.send_trigger(
         TRIGGER_CODES['trial_indicator'],
@@ -204,8 +204,12 @@ def run_single_trial_simulation(
     trial_indicator_duration = 1.0  # Show trial indicator for 1 second
     core.wait(trial_indicator_duration)
     
-    # 3. CONCEPT PRESENTATION (with case)
+    # Pause after trial indicator (JITTERED - pause event)
     display.clear_screen()
+    post_indicator_pause = config.get('POST_FIXATION_PAUSE', 0.5)  # Use same pause duration
+    core.wait(jittered_wait(post_indicator_pause, jitter_range) if use_jitter else post_indicator_pause)
+    
+    # 3. CONCEPT PRESENTATION (with case)
     display.show_concept(concept, case=case)
     
     # Send category-specific trigger
@@ -217,7 +221,12 @@ def run_single_trial_simulation(
     print(f"  [SIM] Concept '{concept}' (Category {category}) at {timestamp:.3f}s")
     
     # NO JITTER - important timing for concept presentation
-    core.wait(config.get('PROMPT_DURATION', 2.0))
+    core.wait(config.get('PROMPT_DURATION', 3.5))
+    
+    # Pause after concept (JITTERED - pause event)
+    display.clear_screen()
+    post_concept_word_pause = config.get('POST_FIXATION_PAUSE', 0.5)  # Use same pause duration
+    core.wait(jittered_wait(post_concept_word_pause, jitter_range) if use_jitter else post_concept_word_pause)
     
     # 4. VISUAL MASK (after concept word)
     display.show_mask()
@@ -230,7 +239,7 @@ def run_single_trial_simulation(
     mask_duration = config.get('MASK_DURATION', 0.3)
     core.wait(mask_duration)
     
-    # Post-mask pause (JITTERED - pause event)
+    # Pause after mask (JITTERED - pause event)
     display.clear_screen()
     post_mask_pause = config.get('POST_MASK_PAUSE', 0.5)
     core.wait(jittered_wait(post_mask_pause, jitter_range) if use_jitter else post_mask_pause)

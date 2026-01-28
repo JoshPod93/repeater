@@ -293,7 +293,7 @@ class DisplayManager:
     
     def show_trial_indicator(self, trial_num: int, total_trials: int):
         """
-        Display trial indicator (trial number).
+        Display trial indicator as centered text (like concept word).
         
         Parameters
         ----------
@@ -302,9 +302,10 @@ class DisplayManager:
         total_trials : int
             Total number of trials
         """
-        progress_text = f"Trial {trial_num}/{total_trials}"
-        self.progress_text.text = progress_text
-        self.progress_text.draw()
+        indicator_text = f"Trial {trial_num}/{total_trials}"
+        # Use concept_text stimulus to display trial indicator (centered, same style)
+        self.concept_text.text = indicator_text
+        self.concept_text.draw()
         self.win.flip()
     
     def show_instructions(self):
