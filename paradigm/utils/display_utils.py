@@ -259,6 +259,12 @@ class DisplayManager:
             height=0.03,
             color='gray'
         )
+        
+        self.visual_mask = create_visual_mask(
+            win,
+            height=config.get('text_height', 0.08),
+            color=config.get('text_color', 'white')
+        )
     
     def show_fixation(self):
         """Display fixation cross."""
@@ -303,9 +309,10 @@ class DisplayManager:
     
     def show_mask(self):
         """
-        Display visual mask (pattern mask to prevent afterimages).
+        Display visual mask (text-based hash pattern to prevent afterimages).
         
-        Shows a noise pattern mask to erase any afterimages from concept presentation.
+        Shows a simple hash pattern mask to erase any afterimages from concept presentation.
+        Standard practice for orthographic (text) stimuli masking.
         """
         self.visual_mask.draw()
         self.win.flip()
