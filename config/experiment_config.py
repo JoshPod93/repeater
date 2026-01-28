@@ -92,7 +92,7 @@ elif ACTIVE_DESIGN == 4:
 # Research summary: Shorter time windows (up to 2s) most favorable
 FIXATION_DURATION = 2.0      # Initial fixation cross (standard for BCI paradigms)
 POST_FIXATION_PAUSE = 0.5   # Pause after fixation disappears, before concept appears
-PROMPT_DURATION = 2.0        # How long to show the concept word (sufficient for reading)
+PROMPT_DURATION = 1.5        # How long to show the concept word (sufficient for reading)
 MASK_DURATION = 0.3          # Duration of visual mask after concept (single backward mask - standard for orthographic stimuli)
 POST_MASK_PAUSE = 0.5        # Pause after mask disappears, before post-concept pause
 POST_CONCEPT_PAUSE = 1.0     # Pause after mask, before beeps start
