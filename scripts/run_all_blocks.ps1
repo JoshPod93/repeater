@@ -97,3 +97,59 @@ Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "Participant: $ParticipantId"
 Write-Host "Total blocks run: $NBlocks"
 Write-Host ""
+
+# Run evaluation scripts
+Write-Host "==========================================" -ForegroundColor Cyan
+Write-Host "Running Data Evaluation Scripts" -ForegroundColor Cyan
+Write-Host "==========================================" -ForegroundColor Cyan
+Write-Host ""
+
+# Check if repeat_analyse environment exists
+$envList = conda env list
+if ($envList -match "repeat_analyse") {
+    Write-Host "Switching to repeat_analyse environment for validation..." -ForegroundColor Gray
+    conda activate repeat_analyse
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "WARNING: Failed to activate repeat_analyse environment" -ForegroundColor Yellow
+        Write-Host "Skipping evaluation scripts. You can run them manually:" -ForegroundColor Yellow
+        Write-Host "  conda activate repeat_analyse" -ForegroundColor Gray
+        Write-Host "  python scripts/validate_triggers.py --participant-id $ParticipantId" -ForegroundColor Gray
+    } else {
+        Write-Host ""
+        Write-Host "Running comprehensive trigger validation..." -ForegroundColor Gray
+        python scripts/validate_triggers.py --participant-id "$ParticipantId"
+        
+        $validationExit = $LASTEXITCODE
+        if ($validationExit -eq 0) {
+            Write-Host ""
+            Write-Host "[OK] Trigger validation completed successfully" -ForegroundColor Green
+        } else {
+            Write-Host ""
+            Write-Host "[WARNING] Trigger validation completed with errors (exit code: $validationExit)" -ForegroundColor Yellow
+        }
+        
+        Write-Host ""
+        Write-Host "Evaluation complete!" -ForegroundColor Green
+        Write-Host ""
+        Write-Host "Note: For additional evaluation scripts, run manually:" -ForegroundColor Gray
+        Write-Host "  python scripts/comprehensive_data_evaluation.py" -ForegroundColor Gray
+        Write-Host "  python scripts/validate_captured_data.py" -ForegroundColor Gray
+    }
+} else {
+    Write-Host "WARNING: repeat_analyse environment not found" -ForegroundColor Yellow
+    Write-Host "Skipping evaluation scripts. To set up the analysis environment:" -ForegroundColor Yellow
+    Write-Host "  .\scripts\setup_analysis_env.ps1" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "Then run validation manually:" -ForegroundColor Yellow
+    Write-Host "  conda activate repeat_analyse" -ForegroundColor Gray
+    Write-Host "  python scripts/validate_triggers.py --participant-id $ParticipantId" -ForegroundColor Gray
+}
+
+Write-Host ""
+Write-Host "==========================================" -ForegroundColor Cyan
+Write-Host "Experiment Session Complete" -ForegroundColor Cyan
+Write-Host "==========================================" -ForegroundColor Cyan
+Write-Host "Participant: $ParticipantId"
+Write-Host "Blocks completed: $NBlocks"
+Write-Host ""

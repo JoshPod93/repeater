@@ -112,3 +112,58 @@ echo "=========================================="
 echo "Participant: $PARTICIPANT_ID"
 echo "Total blocks run: $N_BLOCKS"
 echo ""
+
+# Run evaluation scripts
+echo "=========================================="
+echo "Running Data Evaluation Scripts"
+echo "=========================================="
+echo ""
+
+# Check if repeat_analyse environment exists
+if conda env list | grep -q "^repeat_analyse"; then
+    echo "Switching to repeat_analyse environment for validation..."
+    conda activate repeat_analyse
+    
+    if [ $? -ne 0 ]; then
+        echo "WARNING: Failed to activate repeat_analyse environment"
+        echo "Skipping evaluation scripts. You can run them manually:"
+        echo "  conda activate repeat_analyse"
+        echo "  python scripts/validate_triggers.py --participant-id $PARTICIPANT_ID"
+    else
+        echo ""
+        echo "Running comprehensive trigger validation..."
+        python scripts/validate_triggers.py --participant-id "$PARTICIPANT_ID"
+        
+        VALIDATION_EXIT=$?
+        if [ $VALIDATION_EXIT -eq 0 ]; then
+            echo ""
+            echo "[OK] Trigger validation completed successfully"
+        else
+            echo ""
+            echo "[WARNING] Trigger validation completed with errors (exit code: $VALIDATION_EXIT)"
+        fi
+        
+        echo ""
+        echo "Evaluation complete!"
+        echo ""
+        echo "Note: For additional evaluation scripts, run manually:"
+        echo "  python scripts/comprehensive_data_evaluation.py"
+        echo "  python scripts/validate_captured_data.py"
+    fi
+else
+    echo "WARNING: repeat_analyse environment not found"
+    echo "Skipping evaluation scripts. To set up the analysis environment:"
+    echo "  bash scripts/setup_analysis_env.sh"
+    echo ""
+    echo "Then run validation manually:"
+    echo "  conda activate repeat_analyse"
+    echo "  python scripts/validate_triggers.py --participant-id $PARTICIPANT_ID"
+fi
+
+echo ""
+echo "=========================================="
+echo "Experiment Session Complete"
+echo "=========================================="
+echo "Participant: $PARTICIPANT_ID"
+echo "Blocks completed: $N_BLOCKS"
+echo ""
