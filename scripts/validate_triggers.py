@@ -272,7 +272,7 @@ def analyze_discrepancies(aligned_pairs, bdf_unmatched, mirror_unmatched):
     # Calculate drop rate
     if total_mirror > 0:
         drop_rate = mirror_extra / total_mirror
-        print(f"\n📊 DROP RATE ANALYSIS:")
+        print(f"\nDROP RATE ANALYSIS:")
         print(f"   Triggers sent: {total_mirror}")
         print(f"   Triggers dropped: {mirror_extra}")
         print(f"   Drop rate: {drop_rate:.4f} ({drop_rate*100:.2f}%)")

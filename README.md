@@ -23,18 +23,20 @@ repeater/
 ├── scripts/                  # Utility scripts
 │   ├── git_commit.py         # Git commit tool
 │   ├── validate_triggers.py  # BDF vs CSV trigger validation
-│   ├── check_triggers.py     # Trigger code mapping checker
+│   ├── validate_captured_data.py  # Quick validation
+│   ├── comprehensive_data_evaluation.py  # Full data evaluation
+│   ├── generate_ground_truth_triggers.py  # Ground truth generation
 │   ├── test_biosemi_connection.py  # Biosemi connection test
 │   ├── test_biosemi_triggers.py    # Biosemi trigger test
-│   ├── test_randomization.py       # Randomization test
+│   ├── test_config_randomization.py  # Randomization test
+│   ├── run_all_blocks.sh     # Run all blocks (Linux/Mac)
+│   ├── run_all_blocks.ps1    # Run all blocks (Windows)
 │   ├── setup_analysis_env.ps1      # Analysis env setup (Windows)
 │   ├── setup_analysis_env.sh       # Analysis env setup (Linux/Mac)
 │   └── README.md             # Scripts documentation
 │
 ├── paradigm/                 # Main experiment code
 │   ├── __init__.py
-│   ├── scripts/              # Experiment launchers
-│   │   └── run_experiment.py
 │   ├── utils/                # Utility function banks
 │   │   ├── __init__.py
 │   │   ├── trigger_utils.py  # Trigger handling
@@ -97,22 +99,18 @@ conda activate repeat
 
 #### Live Mode (with Biosemi EEG capture):
 ```bash
-# Run live experiment with Biosemi
-python paradigm/scripts/run_experiment.py --live --participant-id P001
+# Run live experiment (single block - auto-detects next block)
+python paradigm/semantic_paradigm_live.py --participant-id 9999
 
-# Run with specific Biosemi port
-python paradigm/scripts/run_experiment.py --live --participant-id P001 --biosemi-port COM4
-
-# Or run directly
-python paradigm/semantic_paradigm_live.py --participant-id P001 --biosemi-port COM3
+# Run all blocks sequentially
+bash scripts/run_all_blocks.sh 9999
+# Or on Windows PowerShell:
+.\scripts\run_all_blocks.ps1 -ParticipantId 9999
 ```
 
 #### Simulation Mode (for testing without hardware):
 ```bash
 # Run simulation
-python paradigm/scripts/run_experiment.py --simulation --participant-id sim_9999
-
-# Or run directly
 python paradigm/semantic_paradigm_simulation.py --participant-id sim_9999
 ```
 
