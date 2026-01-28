@@ -536,15 +536,29 @@ def run_experiment_live(
     if verbose:
         print(f"\n[BLOCK] Running block {block_num} (trigger block {trigger_block_num})")
     
-    # Initialize trigger handler (test mode - no hardware) with CSV logging
-    # Save trigger CSV in subject folder (same organization as results)
-    csv_timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    csv_log_path = subject_folder / f"sub-{participant_id}_{csv_timestamp}_triggers.csv"
+    # Create block folder at START of block (not at end)
+    block_folder = ensure_block_folder(subject_folder, block_num)
+    print(f"[BLOCK] Block folder created at start: {block_folder}")
+    
+    # Initialize trigger handler with CSV logging
+    # Use ONE CSV file per session (reuse if exists, create if first block)
+    # Extract timestamp from subject folder name for consistent filename
+    folder_name = subject_folder.name
+    if '_' in folder_name:
+        parts = folder_name.split('_')
+        if len(parts) >= 3:
+            session_timestamp = f"{parts[1]}_{parts[2]}"  # YYYYMMDD_HHMMSS from folder name
+        else:
+            session_timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    else:
+        session_timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    
+    csv_log_path = subject_folder / f"sub-{participant_id}_{session_timestamp}_triggers.csv"
     
     trigger_handler = create_trigger_handler(
         port_address=config.get('PARALLEL_PORT_ADDRESS', 0x0378),
         use_triggers=True,  # Live mode - real triggers
-        csv_log_path=csv_log_path,  # Enable CSV mirror logging
+        csv_log_path=csv_log_path,  # Enable CSV mirror logging (will append if exists)
         biosemi_connection=biosemi_conn  # Pass Biosemi connection
     )
     if biosemi_conn:
@@ -598,6 +612,7 @@ def run_experiment_live(
     # Data storage
     trial_data_list = []
     metadata = create_metadata(participant_id, config)
+    metadata['block_num'] = block_num  # Add block number to metadata for filename generation
     
     # Clear screen and show warning (match simulation exactly)
     display.clear_screen()
@@ -731,17 +746,16 @@ def run_experiment_live(
     # Close trigger handler (saves CSV file)
     trigger_handler.close()
     
-    # Save data to block folder
+    # Save data to SUBJECT FOLDER (not block folder - block folders are just for organization)
     print("\n[DATA] Saving trial data...")
-    block_folder = ensure_block_folder(subject_folder, block_num)
-    print(f"[BLOCK] Saving to: {block_folder}")
+    print(f"[DATA] Saving to subject folder: {subject_folder}")
     
     saved_files = save_trial_data(
         metadata=metadata,
         trial_data=trial_data_list,
         subject_folder=subject_folder,
         participant_id=participant_id,
-        block_folder=block_folder
+        block_folder=None  # Save to subject folder, not block folder
     )
     
     total_duration = experiment_clock.getTime()

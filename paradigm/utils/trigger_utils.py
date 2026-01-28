@@ -85,20 +85,26 @@ class TriggerHandler:
             # Create parent directory if needed
             self.csv_log_path.parent.mkdir(parents=True, exist_ok=True)
             
-            # Open CSV file for writing
-            self.csv_file = open(self.csv_log_path, 'w', newline='')
+            # Check if file exists - if so, append (for multi-block sessions)
+            # Otherwise create new file
+            file_exists = self.csv_log_path.exists()
+            mode = 'a' if file_exists else 'w'
+            
+            # Open CSV file for writing/appending
+            self.csv_file = open(self.csv_log_path, mode, newline='')
             self.csv_writer = csv.writer(self.csv_file)
             
-            # Write header
-            self.csv_writer.writerow([
-                'timestamp_psychopy',  # PsychoPy clock time
-                'timestamp_absolute',   # Absolute datetime
-                'trigger_code',         # Numeric trigger code
-                'event_name',           # Human-readable event name
-                'sent_to_eeg'           # Whether trigger was sent to EEG
-            ])
+            # Write header only if new file
+            if not file_exists:
+                self.csv_writer.writerow([
+                    'timestamp_psychopy',  # PsychoPy clock time
+                    'timestamp_absolute',   # Absolute datetime
+                    'trigger_code',         # Numeric trigger code
+                    'event_name',           # Human-readable event name
+                    'sent_to_eeg'           # Whether trigger was sent to EEG
+                ])
             
-            logger.info(f"CSV trigger logging initialized: {self.csv_log_path}")
+            logger.info(f"CSV trigger logging initialized: {self.csv_log_path} (mode: {mode})")
         except Exception as e:
             logger.warning(f"Could not initialize CSV logging: {e}")
             self.csv_log_path = None
