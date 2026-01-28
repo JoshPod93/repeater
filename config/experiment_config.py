@@ -93,8 +93,7 @@ elif ACTIVE_DESIGN == 4:
 FIXATION_DURATION = 2.0      # Initial fixation cross (standard for BCI paradigms)
 POST_FIXATION_PAUSE = 0.5   # Pause after fixation disappears, before concept appears
 PROMPT_DURATION = 3.5        # How long to show the concept word (sufficient for reading/comprehension)
-MASK_DURATION = 0.1          # Duration of each mask flash (mask flashes on/off/on for stronger masking)
-MASK_FLASHES = 3             # Number of mask flashes (on/off/on pattern)
+MASK_DURATION = 0.3          # Duration of visual mask after concept (single backward mask - standard for orthographic stimuli)
 POST_MASK_PAUSE = 0.5        # Pause after mask disappears, before post-concept pause
 POST_CONCEPT_PAUSE = 3.0     # Pause after mask, before beeps start
 BEEP_INTERVAL = 0.8          # Time between beeps (SOA) - matches Alberto's successful "Ours rhythm" protocol
@@ -118,10 +117,9 @@ JITTER_RANGE = 0.1           # ±10% jitter by default
 
 # Calculate total trial duration
 # Note: Actual duration will vary due to jittering if enabled
-# Calculate mask total duration (flashes: on/off/on/off/on = 5 flashes × duration)
-MASK_TOTAL_DURATION = MASK_DURATION * 5  # 5 flashes (on/off/on/off/on pattern)
-
-TRIAL_DURATION = (FIXATION_DURATION + POST_FIXATION_PAUSE + PROMPT_DURATION + MASK_TOTAL_DURATION + 
+# Calculate total trial duration
+# Note: Actual duration will vary due to jittering if enabled
+TRIAL_DURATION = (FIXATION_DURATION + POST_FIXATION_PAUSE + PROMPT_DURATION + MASK_DURATION + 
                   POST_MASK_PAUSE + POST_CONCEPT_PAUSE + (BEEP_INTERVAL * N_BEEPS) + REST_DURATION)
 
 # =============================================================================

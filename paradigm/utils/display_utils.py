@@ -316,42 +316,6 @@ class DisplayManager:
         self.visual_mask.draw()
         self.win.flip()
     
-    def show_mask_flash(self, duration: float):
-        """
-        Display mask flash (on/off/on pattern for stronger masking).
-        
-        Flashes mask on and off multiple times to ensure complete afterimage erasure.
-        Standard practice for orthographic masking.
-        
-        Parameters
-        ----------
-        duration : float
-            Duration of each flash (on or off)
-        """
-        from psychopy import core
-        # Flash pattern: on -> off -> on -> off -> on
-        # This ensures strong masking effect
-        self.visual_mask.draw()
-        self.win.flip()
-        core.wait(duration)
-        
-        # Off
-        self.win.flip()
-        core.wait(duration)
-        
-        # On again
-        self.visual_mask.draw()
-        self.win.flip()
-        core.wait(duration)
-        
-        # Off
-        self.win.flip()
-        core.wait(duration)
-        
-        # Final on
-        self.visual_mask.draw()
-        self.win.flip()
-        core.wait(duration)
     
     def clear_screen(self):
         """Clear screen (blank display)."""

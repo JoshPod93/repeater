@@ -208,17 +208,16 @@ def run_single_trial_simulation(
     # NO JITTER - important timing for concept presentation
     core.wait(config.get('PROMPT_DURATION', 2.0))
     
-    # Visual mask to prevent afterimages (flashing pattern for stronger masking)
+    # Visual mask to prevent afterimages (single backward mask - standard for orthographic stimuli)
+    display.show_mask()
     timestamp, _ = trigger_handler.send_trigger(
         TRIGGER_CODES['mask'],
         event_name='mask'
     )
     trial_data['timestamps']['mask'] = timestamp
     print(f"  [SIM] Mask at {timestamp:.3f}s")
-    mask_duration = config.get('MASK_DURATION', 0.1)
-    mask_flashes = config.get('MASK_FLASHES', 3)
-    # Flash mask on/off/on pattern for stronger masking
-    display.show_mask_flash(mask_duration)
+    mask_duration = config.get('MASK_DURATION', 0.3)
+    core.wait(mask_duration)
     
     # Post-mask pause (JITTERED - pause event)
     display.clear_screen()
