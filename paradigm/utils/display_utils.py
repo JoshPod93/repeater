@@ -5,7 +5,6 @@ Handles creation and management of visual stimuli for the semantic visualization
 """
 
 from psychopy import visual
-import numpy as np
 from typing import Optional, Tuple
 
 
