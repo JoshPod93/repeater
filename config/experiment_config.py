@@ -91,16 +91,18 @@ elif ACTIVE_DESIGN == 4:
 #
 # Research summary: Shorter time windows (up to 2s) most favorable
 FIXATION_DURATION = 2.0      # Initial fixation cross (standard for BCI paradigms)
+POST_FIXATION_PAUSE = 0.5   # Pause after fixation disappears, before concept appears
 PROMPT_DURATION = 2.0        # How long to show the concept word (sufficient for reading/initiation)
+MASK_DURATION = 0.2          # Duration of visual mask after concept (prevents afterimages)
+POST_MASK_PAUSE = 0.5        # Pause after mask disappears, before post-concept pause
+POST_CONCEPT_PAUSE = 3.0     # Pause after mask, before beeps start
 BEEP_INTERVAL = 0.8          # Time between beeps (SOA) - matches Alberto's successful "Ours rhythm" protocol
 N_BEEPS = 8                  # Number of rhythmic beeps per concept presentation
                               # Each beep = one repetition = one analysis trial
                               # 8 beeps × 0.8s = 6.4s visualization period per concept
                               # Total analysis trials = N_TRIALS × N_BEEPS
-MASK_DURATION = 0.2          # Duration of visual mask after concept (prevents afterimages)
-POST_CONCEPT_PAUSE = 1.0     # Pause after mask disappears, before beeps start
-REST_DURATION = 1.0          # Blank screen after trial (standard rest period)
-INTER_TRIAL_INTERVAL = 0.5   # Break between trials (prevents fatigue)
+REST_DURATION = 2.0          # Blank screen after trial (standard rest period)
+INTER_TRIAL_INTERVAL = 3.0   # Break between trials (prevents fatigue)
 
 # =============================================================================
 # JITTER SETTINGS
