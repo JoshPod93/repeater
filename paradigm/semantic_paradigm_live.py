@@ -199,9 +199,14 @@ def run_single_trial_live(
     post_fixation_pause = config.get('POST_FIXATION_PAUSE', 0.5)
     core.wait(jittered_wait(post_fixation_pause, jitter_range) if use_jitter else post_fixation_pause)
     
-    # 2. CONCEPT PRESENTATION (with case)
-    progress_text = f"Trial {trial_num}/{total_trials}"
-    display.show_concept(concept, show_progress=True, progress_text=progress_text, case=case)
+    # 2. TRIAL INDICATOR (shows trial number first, before concept)
+    display.show_trial_indicator(trial_num, total_trials)
+    trial_indicator_duration = 1.0  # Show trial indicator for 1 second
+    core.wait(trial_indicator_duration)
+    
+    # 3. CONCEPT PRESENTATION (with case)
+    display.clear_screen()
+    display.show_concept(concept, case=case)
     
     # Send category-specific trigger (OUR codes)
     trigger_code = (TRIGGER_CODES['concept_category_a'] if category == 'A' 
@@ -214,7 +219,7 @@ def run_single_trial_live(
     # NO JITTER - important timing for concept presentation
     core.wait(config.get('PROMPT_DURATION', 2.0))
     
-    # Visual mask to prevent afterimages (single backward mask - standard for orthographic stimuli)
+    # 4. VISUAL MASK (after concept word)
     display.show_mask()
     timestamp, _ = trigger_handler.send_trigger(
         TRIGGER_CODES['mask'],
@@ -234,7 +239,7 @@ def run_single_trial_live(
     post_concept_pause = config.get('POST_CONCEPT_PAUSE', 3.0)
     core.wait(jittered_wait(post_concept_pause, jitter_range) if use_jitter else post_concept_pause)
     
-    # Show fixation cross (stays on during beeps)
+    # 5. FIXATION CROSS (for beep presentation - stays on during beeps)
     display.show_fixation()
     
     # 3. VISUALIZATION PERIOD (fixation stays on screen)

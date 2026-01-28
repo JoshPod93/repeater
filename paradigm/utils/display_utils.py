@@ -270,8 +270,7 @@ class DisplayManager:
         self.fixation.draw()
         self.win.flip()
     
-    def show_concept(self, concept: str, show_progress: bool = False, 
-                     progress_text: Optional[str] = None, case: str = 'lower'):
+    def show_concept(self, concept: str, case: str = 'lower'):
         """
         Display concept word.
         
@@ -279,10 +278,6 @@ class DisplayManager:
         ----------
         concept : str
             Concept to display
-        show_progress : bool
-            Whether to show progress indicator
-        progress_text : str, optional
-            Progress text to display
         case : str
             Case to display: 'upper' for uppercase, 'lower' for lowercase (default: 'lower')
         """
@@ -294,11 +289,22 @@ class DisplayManager:
         
         self.concept_text.text = display_text
         self.concept_text.draw()
+        self.win.flip()
+    
+    def show_trial_indicator(self, trial_num: int, total_trials: int):
+        """
+        Display trial indicator (trial number).
         
-        if show_progress and progress_text:
-            self.progress_text.text = progress_text
-            self.progress_text.draw()
-        
+        Parameters
+        ----------
+        trial_num : int
+            Current trial number
+        total_trials : int
+            Total number of trials
+        """
+        progress_text = f"Trial {trial_num}/{total_trials}"
+        self.progress_text.text = progress_text
+        self.progress_text.draw()
         self.win.flip()
     
     def show_instructions(self):
