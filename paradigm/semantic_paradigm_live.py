@@ -192,6 +192,13 @@ def run_single_trial_live(
     print(f"  Fixation at {timestamp:.3f}s")
     core.wait(config.get('FIXATION_DURATION', 2.0))
     
+    # Post-fixation pause (JITTERED - pause event)
+    display.clear_screen()
+    use_jitter = config.get('USE_JITTER', True)
+    jitter_range = config.get('JITTER_RANGE', 0.1)
+    post_fixation_pause = config.get('POST_FIXATION_PAUSE', 0.5)
+    core.wait(jittered_wait(post_fixation_pause, jitter_range) if use_jitter else post_fixation_pause)
+    
     # 2. CONCEPT PRESENTATION (with case)
     progress_text = f"Trial {trial_num}/{total_trials}"
     display.show_concept(concept, show_progress=True, progress_text=progress_text, case=case)
@@ -218,11 +225,13 @@ def run_single_trial_live(
     mask_duration = config.get('MASK_DURATION', 0.2)
     core.wait(mask_duration)
     
-    # Clear mask and pause before beeps (JITTERED - pause event)
+    # Post-mask pause (JITTERED - pause event)
     display.clear_screen()
-    use_jitter = config.get('USE_JITTER', True)
-    jitter_range = config.get('JITTER_RANGE', 0.1)
-    post_concept_pause = config.get('POST_CONCEPT_PAUSE', 1.0)
+    post_mask_pause = config.get('POST_MASK_PAUSE', 0.5)
+    core.wait(jittered_wait(post_mask_pause, jitter_range) if use_jitter else post_mask_pause)
+    
+    # Post-concept pause before beeps (JITTERED - pause event)
+    post_concept_pause = config.get('POST_CONCEPT_PAUSE', 3.0)
     core.wait(jittered_wait(post_concept_pause, jitter_range) if use_jitter else post_concept_pause)
     
     # Show fixation cross (stays on during beeps)
@@ -263,7 +272,7 @@ def run_single_trial_live(
     # Rest (JITTERED - pause event)
     use_jitter = config.get('USE_JITTER', True)
     jitter_range = config.get('JITTER_RANGE', 0.1)
-    rest_duration = config.get('REST_DURATION', 1.0)
+    rest_duration = config.get('REST_DURATION', 2.0)
     core.wait(jittered_wait(rest_duration, jitter_range) if use_jitter else rest_duration)
     
     return trial_data
@@ -694,7 +703,7 @@ def run_experiment_live(
         if len(trial_data_list) < len(block_trials):
             use_jitter = config.get('USE_JITTER', True)
             jitter_range = config.get('JITTER_RANGE', 0.1)
-            inter_trial_interval = config.get('INTER_TRIAL_INTERVAL', 0.5)
+            inter_trial_interval = config.get('INTER_TRIAL_INTERVAL', 3.0)
             wait_duration = jittered_wait(inter_trial_interval, jitter_range) if use_jitter else inter_trial_interval
             core.wait(wait_duration)
     

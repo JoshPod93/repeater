@@ -115,8 +115,8 @@ JITTER_RANGE = 0.1           # ±10% jitter by default
 
 # Calculate total trial duration
 # Note: Actual duration will vary due to jittering if enabled
-TRIAL_DURATION = (FIXATION_DURATION + PROMPT_DURATION + MASK_DURATION + POST_CONCEPT_PAUSE + 
-                  (BEEP_INTERVAL * N_BEEPS) + REST_DURATION)
+TRIAL_DURATION = (FIXATION_DURATION + POST_FIXATION_PAUSE + PROMPT_DURATION + MASK_DURATION + 
+                  POST_MASK_PAUSE + POST_CONCEPT_PAUSE + (BEEP_INTERVAL * N_BEEPS) + REST_DURATION)
 
 # =============================================================================
 # EXPERIMENT STRUCTURE
