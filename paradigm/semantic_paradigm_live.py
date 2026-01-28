@@ -695,109 +695,169 @@ def run_experiment_live(
     trigger_handler._log_trigger_to_csv(timestamp, block_start_code, f'block_{trigger_block_num}_start', True)
     print(f"[TRIGGER] Block {trigger_block_num} start (trigger {block_start_code}) logged at {timestamp:.3f}s (sent earlier)")
     
-    # Run trials in this block
-    # Trial numbers are global (1-indexed across all blocks)
-    for trial_idx, trial_spec in enumerate(block_trials):
-        # Get global trial number (1-indexed)
-        global_trial_num = global_trial_start + trial_idx
+    # Wrap block execution in try/finally to ensure data is always saved
+    interrupted = False
+    try:
+        # Run trials in this block
+        # Trial numbers are global (1-indexed across all blocks)
+        for trial_idx, trial_spec in enumerate(block_trials):
+            # Get global trial number (1-indexed)
+            global_trial_num = global_trial_start + trial_idx
+            
+            # Check for escape
+            keys = event.getKeys(keyList=['escape'])
+            if 'escape' in keys:
+                print("\n[EXIT] Experiment terminated by user (Escape key)")
+                interrupted = True
+                break
+            
+            # Run trial
+            # Calculate block-local trial number (1-indexed within block)
+            block_trial_num = trial_idx + 1
+            trials_per_block = len(block_trials)
+            
+            trial_data = run_single_trial_live(
+                win=win,
+                display=display,
+                trial_spec=trial_spec,
+                config=config,
+                trigger_handler=trigger_handler,
+                beep_sound=beep_sound,
+                trial_num=global_trial_num,
+                total_trials=n_trials_total,
+                block_trial_num=block_trial_num,
+                trials_per_block=trials_per_block
+            )
+            
+            trial_data_list.append(trial_data)
+            
+            # Inter-trial interval (jittered) - only if not last trial in block
+            if len(trial_data_list) < len(block_trials):
+                use_jitter = config.get('USE_JITTER', True)
+                jitter_range = config.get('JITTER_RANGE', 0.1)
+                inter_trial_interval = config.get('INTER_TRIAL_INTERVAL', 3.0)
+                wait_duration = jittered_wait(inter_trial_interval, jitter_range) if use_jitter else inter_trial_interval
+                core.wait(wait_duration)
         
-        # Check for escape
-        keys = event.getKeys(keyList=['escape'])
-        if 'escape' in keys:
-            print("\n[EXIT] Experiment terminated by user (Escape key)")
-            break
+        # Block end (use 1-indexed for trigger codes) - only if not interrupted
+        if not interrupted:
+            block_end_code = get_block_end_code(trigger_block_num)
+            timestamp, _ = trigger_handler.send_trigger(
+                block_end_code,
+                event_name=f'block_{trigger_block_num}_end'
+            )
+            print(f"[TRIGGER] Block {trigger_block_num} end (trigger {block_end_code}) at {timestamp:.3f}s")
+        else:
+            print(f"\n[WARNING] Block {block_num} was interrupted - saving partial data")
+    
+    except KeyboardInterrupt:
+        interrupted = True
+        print(f"\n[WARNING] Block {block_num} interrupted by user (Ctrl+C) - saving partial data")
+    
+    except Exception as e:
+        interrupted = True
+        print(f"\n[ERROR] Block {block_num} encountered error: {e}")
+        print("[INFO] Saving partial data before exiting...")
+        import traceback
+        traceback.print_exc()
+    
+    finally:
+        # ALWAYS save data, close connections, and cleanup - even if interrupted
+        # Close trigger handler (saves CSV file)
+        try:
+            trigger_handler.close()
+        except:
+            pass
         
-        # Run trial
-        # Calculate block-local trial number (1-indexed within block)
-        block_trial_num = trial_idx + 1
-        trials_per_block = len(block_trials)
+        # Save data to SUBJECT FOLDER (not block folder - block folders are just for organization)
+        if trial_data_list:  # Only save if we have some data
+            print("\n[DATA] Saving trial data...")
+            print(f"[DATA] Saving to subject folder: {subject_folder}")
+            
+            try:
+                saved_files = save_trial_data(
+                    metadata=metadata,
+                    trial_data=trial_data_list,
+                    subject_folder=subject_folder,
+                    participant_id=participant_id,
+                    block_folder=None  # Save to subject folder, not block folder
+                )
+                
+                total_duration = experiment_clock.getTime()
+                
+                # Print summary
+                print("\n" + "="*80)
+                print("BLOCK SUMMARY")
+                print("="*80)
+                print_experiment_summary(
+                    metadata=metadata,
+                    trial_data=trial_data_list,
+                    total_duration=total_duration,
+                    saved_files=saved_files
+                )
+                
+                if interrupted:
+                    print(f"\n[INFO] Block {block_num} saved with {len(trial_data_list)}/{len(block_trials)} trials completed")
+                else:
+                    print(f"\n[INFO] Block {block_num} completed successfully with {len(trial_data_list)} trials")
+                    
+            except Exception as e:
+                print(f"[ERROR] Failed to save data: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print(f"\n[WARNING] No trial data to save for block {block_num}")
         
-        trial_data = run_single_trial_live(
-            win=win,
-            display=display,
-            trial_spec=trial_spec,
-            config=config,
-            trigger_handler=trigger_handler,
-            beep_sound=beep_sound,
-            trial_num=global_trial_num,
-            total_trials=n_trials_total,
-            block_trial_num=block_trial_num,
-            trials_per_block=trials_per_block
-        )
+        # Clean up Biosemi connection
+        if biosemi_conn:
+            try:
+                close_biosemi_connection(biosemi_conn)
+                print("[BIOSEMI] Connection closed")
+            except:
+                pass
         
-        trial_data_list.append(trial_data)
+        # End screen (brief display, then auto-quit) - only if not interrupted
+        if not interrupted:
+            try:
+                display.show_text(
+                    "Block Complete!\n\nThank you for participating.",
+                    height=0.06
+                )
+                core.wait(2.0)  # Show completion message for 2 seconds
+            except:
+                pass
         
-        # Inter-trial interval (jittered) - only if not last trial in block
-        if len(trial_data_list) < len(block_trials):
-            use_jitter = config.get('USE_JITTER', True)
-            jitter_range = config.get('JITTER_RANGE', 0.1)
-            inter_trial_interval = config.get('INTER_TRIAL_INTERVAL', 3.0)
-            wait_duration = jittered_wait(inter_trial_interval, jitter_range) if use_jitter else inter_trial_interval
-            core.wait(wait_duration)
+        # Cleanup window
+        try:
+            win.close()
+        except:
+            pass
+        
+        try:
+            core.quit()
+        except:
+            pass
     
-    # Block end (use 1-indexed for trigger codes)
-    block_end_code = get_block_end_code(trigger_block_num)
-    timestamp, _ = trigger_handler.send_trigger(
-        block_end_code,
-        event_name=f'block_{trigger_block_num}_end'
-    )
-    print(f"[TRIGGER] Block {trigger_block_num} end (trigger {block_end_code}) at {timestamp:.3f}s")
+    # Return results (saved_files may not exist if save failed)
+    try:
+        saved_files_var = saved_files
+    except NameError:
+        saved_files_var = {}
     
-    # Close trigger handler (saves CSV file)
-    trigger_handler.close()
-    
-    # Save data to SUBJECT FOLDER (not block folder - block folders are just for organization)
-    print("\n[DATA] Saving trial data...")
-    print(f"[DATA] Saving to subject folder: {subject_folder}")
-    
-    saved_files = save_trial_data(
-        metadata=metadata,
-        trial_data=trial_data_list,
-        subject_folder=subject_folder,
-        participant_id=participant_id,
-        block_folder=None  # Save to subject folder, not block folder
-    )
-    
-    total_duration = experiment_clock.getTime()
-    
-    # End screen (brief display, then auto-quit) - match simulation exactly
-    display.show_text(
-        "Experiment Complete!\n\nThank you for participating.",
-        height=0.06
-    )
-    core.wait(2.0)  # Show completion message for 2 seconds
-    
-    # Clean up Biosemi connection
-    if biosemi_conn:
-        close_biosemi_connection(biosemi_conn)
-        print("[BIOSEMI] Connection closed")
-    
-    # Print summary
-    print("\n" + "="*80)
-    print("EXPERIMENT SUMMARY")
-    print("="*80)
-    print_experiment_summary(
-        metadata=metadata,
-        trial_data=trial_data_list,
-        total_duration=total_duration,
-        saved_files=saved_files
-    )
-    
-    # Cleanup
-    trigger_handler.close()
-    if biosemi_conn:
-        close_biosemi_connection(biosemi_conn)
-    win.close()
-    core.quit()
+    try:
+        total_duration_var = total_duration
+    except NameError:
+        total_duration_var = experiment_clock.getTime() if 'experiment_clock' in locals() else 0.0
     
     return {
         'participant_id': participant_id,
         'subject_folder': str(subject_folder),
         'block_num': block_num,
         'trials_completed': len(trial_data_list),
-        'total_duration': total_duration,
-        'saved_files': saved_files,
-        'trial_data': trial_data_list
+        'total_trials': len(block_trials),
+        'total_duration': total_duration_var,
+        'saved_files': saved_files_var,
+        'interrupted': interrupted
     }
 
 
