@@ -173,6 +173,10 @@ def run_single_trial_live(
     
     print(f"\nTrial {trial_num}/{total_trials}: {display_concept} (Category {category})")
     
+    # Initialize jitter settings (used throughout trial)
+    use_jitter = config.get('USE_JITTER', True)
+    jitter_range = config.get('JITTER_RANGE', 0.1)
+    
     # Send trial start trigger (unique code for this trial number)
     trial_start_code = get_trial_start_code(trial_num)
     timestamp, _ = trigger_handler.send_trigger(
