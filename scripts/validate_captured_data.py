@@ -116,7 +116,8 @@ def main():
     n_trials_per_block = config.get('TRIALS_PER_BLOCK', 10)
     n_beeps = config.get('N_BEEPS', 8)
     
-    triggers_per_trial = 13  # start + fixation + concept + beep_start + 8 beeps + end
+    # Triggers per trial: start + indicator + concept + mask + fixation + beep_start + 8 beeps + end
+    triggers_per_trial = 15  # Updated to include trial_indicator (3) and mask (25)
     triggers_per_block = 1 + (n_trials_per_block * triggers_per_trial) + 1  # block_start + trials + block_end
     expected_total = n_blocks * triggers_per_block
     
