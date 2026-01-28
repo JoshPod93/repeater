@@ -101,7 +101,7 @@ N_BEEPS = 8                  # Number of rhythmic beeps per concept presentation
                               # Each beep = one repetition = one analysis trial
                               # 8 beeps × 0.8s = 6.4s visualization period per concept
                               # Total analysis trials = N_TRIALS × N_BEEPS
-REST_DURATION = 2.0          # Blank screen after trial (standard rest period)
+REST_DURATION = 1.0          # Blank screen after trial (standard rest period)
 INTER_TRIAL_INTERVAL = 3.0   # Break between trials (prevents fatigue)
 
 # =============================================================================
