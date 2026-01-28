@@ -103,6 +103,31 @@ Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "Running Data Evaluation Scripts" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host ""
+Write-Host "IMPORTANT: Please ensure you have STOPPED the Biosemi recording" -ForegroundColor Yellow
+Write-Host "before validation scripts run (BDF file must be closed)." -ForegroundColor Yellow
+Write-Host ""
+
+$response = Read-Host "Have you stopped the recording? (y/n)"
+if ($response -notmatch "^[Yy]$") {
+    Write-Host ""
+    Write-Host "Skipping validation scripts." -ForegroundColor Yellow
+    Write-Host "Please run them manually after stopping the recording:" -ForegroundColor Yellow
+    Write-Host "  conda activate repeat_analyse" -ForegroundColor Gray
+    Write-Host "  python scripts/comprehensive_data_evaluation.py --participant-id $ParticipantId" -ForegroundColor Gray
+    Write-Host "  python scripts/validate_captured_data.py --participant-id $ParticipantId" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "==========================================" -ForegroundColor Cyan
+    Write-Host "Experiment Session Complete" -ForegroundColor Cyan
+    Write-Host "==========================================" -ForegroundColor Cyan
+    Write-Host "Participant: $ParticipantId"
+    Write-Host "Blocks completed: $NBlocks"
+    Write-Host ""
+    exit 0
+}
+
+Write-Host ""
+Write-Host "Proceeding with validation..." -ForegroundColor Gray
+Write-Host ""
 
 # Check if repeat_analyse environment exists
 $envList = conda env list

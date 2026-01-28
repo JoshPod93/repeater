@@ -118,6 +118,31 @@ echo "=========================================="
 echo "Running Data Evaluation Scripts"
 echo "=========================================="
 echo ""
+echo "IMPORTANT: Please ensure you have STOPPED the Biosemi recording"
+echo "before validation scripts run (BDF file must be closed)."
+echo ""
+read -p "Have you stopped the recording? (y/n): " -n 1 -r
+echo ""
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo ""
+    echo "Skipping validation scripts."
+    echo "Please run them manually after stopping the recording:"
+    echo "  conda activate repeat_analyse"
+    echo "  python scripts/comprehensive_data_evaluation.py --participant-id $PARTICIPANT_ID"
+    echo "  python scripts/validate_captured_data.py --participant-id $PARTICIPANT_ID"
+    echo ""
+    echo "=========================================="
+    echo "Experiment Session Complete"
+    echo "=========================================="
+    echo "Participant: $PARTICIPANT_ID"
+    echo "Blocks completed: $N_BLOCKS"
+    echo ""
+    exit 0
+fi
+
+echo ""
+echo "Proceeding with validation..."
+echo ""
 
 # Check if repeat_analyse environment exists
 if conda env list | grep -q "^repeat_analyse"; then
