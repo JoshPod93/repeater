@@ -769,10 +769,10 @@ def run_experiment_live(
         except:
             pass
         
-        # Save data to SUBJECT FOLDER (not block folder - block folders are just for organization)
+        # Save data to BLOCK FOLDER (each block contains its own data files)
         if trial_data_list:  # Only save if we have some data
             print("\n[DATA] Saving trial data...")
-            print(f"[DATA] Saving to subject folder: {subject_folder}")
+            print(f"[DATA] Saving to block folder: {block_folder}")
             
             try:
                 saved_files = save_trial_data(
@@ -780,7 +780,7 @@ def run_experiment_live(
                     trial_data=trial_data_list,
                     subject_folder=subject_folder,
                     participant_id=participant_id,
-                    block_folder=None  # Save to subject folder, not block folder
+                    block_folder=block_folder  # Save to block folder
                 )
                 
                 total_duration = experiment_clock.getTime()

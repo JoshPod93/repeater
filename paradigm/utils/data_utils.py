@@ -112,9 +112,9 @@ def save_trial_data(metadata: Dict[str, Any],
     dict
         Dictionary with paths to saved files ('json' and/or 'numpy')
     """
-    # Always save to subject folder (block_folder parameter is ignored)
-    # Block folders exist for organization but data files go in subject folder
-    save_dir = subject_folder
+    # Save to block folder if provided, otherwise to subject folder
+    # Block folders contain their own data files for organization
+    save_dir = block_folder if block_folder else subject_folder
     save_dir.mkdir(parents=True, exist_ok=True)
     
     # Extract timestamp from subject folder name
@@ -128,13 +128,9 @@ def save_trial_data(metadata: Dict[str, Any],
     else:
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
-    # Generate filename with block number suffix for uniqueness
-    # Format: sub-{participant_id}_{timestamp}_block{block_num}_trials.json
-    # Extract block number from metadata
-    block_num = 0
-    if isinstance(metadata, dict):
-        block_num = metadata.get('block_num', 0)
-    base_filename = f"sub-{participant_id}_{timestamp}_block{block_num:04d}"
+    # Generate filename - if in block folder, no need for block number suffix
+    # Format: sub-{participant_id}_{timestamp}_trials.json
+    base_filename = f"sub-{participant_id}_{timestamp}_trials"
     
     saved_files = {}
     
