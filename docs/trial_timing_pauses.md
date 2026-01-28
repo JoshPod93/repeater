@@ -64,7 +64,7 @@ Complete list of all pauses, waits, and intervals during a single trial period.
 - **Purpose**: Post-trial rest period
 
 ### 7. **Inter-Trial Interval** ⚠️ JITTERED
-- **Duration**: `INTER_TRIAL_INTERVAL = 0.5` seconds (±10% jitter)
+- **Duration**: `INTER_TRIAL_INTERVAL = 0.5` seconds (+/-10% jitter)
 - **Jitter**: **YES** - Uses `jittered_wait()` with `JITTER_RANGE = 0.1`
 - **Actual Range**: 0.45 - 0.55 seconds (randomized per trial)
 - **Location**: Between trials (only if not last trial in block)
@@ -103,9 +103,9 @@ Complete list of all pauses, waits, and intervals during a single trial period.
 - **Fixed subtotal**: 10.6s
 
 **Jittered Components** (varies per trial):
-- Post-concept pause: ~1.0s (±0.1s)
-- Rest period: ~1.0s (±0.1s)
-- Inter-trial interval: ~0.5s (±0.05s) [only between trials]
+- Post-concept pause: ~1.0s (+/-0.1s)
+- Rest period: ~1.0s (+/-0.1s)
+- Inter-trial interval: ~0.5s (+/-0.05s) [only between trials]
 
 **Total per trial** (excluding inter-trial interval):
 - Minimum: 10.4 + 0.9 + 0.9 = **12.2 seconds**
@@ -135,7 +135,7 @@ Complete list of all pauses, waits, and intervals during a single trial period.
    - Rest period (post-trial pause)
    - Inter-trial interval (between-trial break)
 
-3. **Jitter Range**: ±10% (`JITTER_RANGE = 0.1`)
+3. **Jitter Range**: +/-10% (`JITTER_RANGE = 0.1`)
    - Prevents anticipatory responses
    - Reduces temporal predictability
    - Only applied to non-critical pause events
