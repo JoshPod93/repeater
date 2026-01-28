@@ -41,8 +41,8 @@ def create_metadata(participant_id: str,
         'participant_id': participant_id,
         'date': datetime.now().strftime('%Y-%m-%d'),
         'time': datetime.now().strftime('%H:%M:%S'),
-        'concepts_category_a': config.get('concepts_category_a', []),
-        'concepts_category_b': config.get('concepts_category_b', []),
+        'concepts_category_a': config.get('CONCEPTS_CATEGORY_A', config.get('concepts_category_a', [])),
+        'concepts_category_b': config.get('CONCEPTS_CATEGORY_B', config.get('concepts_category_b', [])),
         'n_trials': n_trials_value,  # Trials in this block
         'timing': {
             'fixation': config.get('fixation_duration', 2.0),
