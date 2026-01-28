@@ -62,19 +62,24 @@ def test_randomization():
     
     print(f"\nGenerated {len(block_trials)} trials:")
     for i, trial in enumerate(block_trials, 1):
-        print(f"  {i:2d}. {trial['concept']:12s} (Category {trial['category']})")
+        case_display = trial.get('case', 'lower')
+        display_concept = trial['concept'].upper() if case_display == 'upper' else trial['concept'].lower()
+        print(f"  {i:2d}. {display_concept:12s} (Category {trial['category']}, {case_display})")
     
     # Count distribution
     concept_counts = Counter([t['concept'] for t in block_trials])
     category_counts = Counter([t['category'] for t in block_trials])
+    case_counts = Counter([t.get('case', 'lower') for t in block_trials])
     
     print(f"\nDistribution:")
     print(f"  Category A: {category_counts.get('A', 0)} trials")
     print(f"  Category B: {category_counts.get('B', 0)} trials")
-    print(f"\n  Concept counts:")
+    print(f"  Case - Upper: {case_counts.get('upper', 0)}, Lower: {case_counts.get('lower', 0)}")
+    print(f"\n  Concept counts (should be 1 each):")
     for concept in sorted(set(concepts_a + concepts_b)):
         count = concept_counts.get(concept, 0)
-        print(f"    {concept:12s}: {count}")
+        status = "OK" if count == 1 else "ERROR"
+        print(f"    {concept:12s}: {count} [{status}]")
     
     # Test full protocol (all blocks)
     print(f"\n{'='*70}")
@@ -118,10 +123,23 @@ def test_randomization():
         status = "OK" if abs(count - expected) <= 2 else "WARN"
         print(f"    {concept:12s}: {count:3d} (expected ~{expected}) [{status}]")
     
-    # Check case distribution (if cases are assigned)
+    # Check case distribution per block (should be 5 upper, 5 lower per block)
+    print(f"\n  Case distribution per block:")
+    all_blocks_case_ok = True
+    for b, block_trials in enumerate(all_blocks_trials):
+        block_case_counts = Counter([t.get('case', 'lower') for t in block_trials])
+        upper_count = block_case_counts.get('upper', 0)
+        lower_count = block_case_counts.get('lower', 0)
+        is_balanced = (upper_count == 5 and lower_count == 5)
+        if not is_balanced:
+            all_blocks_case_ok = False
+        status = "OK" if is_balanced else "ERROR"
+        print(f"    Block {b}: Upper={upper_count}, Lower={lower_count} [{status}]")
+    
+    # Check global case distribution
     case_counts = Counter([t.get('case', 'lower') for t in all_trials])
     if 'upper' in case_counts or 'lower' in case_counts:
-        print(f"\n  Case distribution:")
+        print(f"\n  Global case distribution:")
         print(f"    Upper case: {case_counts.get('upper', 0)} trials")
         print(f"    Lower case: {case_counts.get('lower', 0)} trials")
         total_cases = case_counts.get('upper', 0) + case_counts.get('lower', 0)
@@ -129,9 +147,14 @@ def test_randomization():
             upper_pct = (case_counts.get('upper', 0) / total_cases) * 100
             print(f"    Distribution: {upper_pct:.1f}% upper, {100-upper_pct:.1f}% lower")
             if abs(upper_pct - 50) <= 5:
-                print(f"    [OK] Case distribution is balanced (~50/50)")
+                print(f"    [OK] Global case distribution is balanced (~50/50)")
             else:
-                print(f"    [WARN] Case distribution is not balanced")
+                print(f"    [WARN] Global case distribution is not balanced")
+    
+    if all_blocks_case_ok:
+        print(f"\n  [OK] All blocks have balanced case distribution (5 upper, 5 lower per block)")
+    else:
+        print(f"\n  [ERROR] Some blocks do not have balanced case distribution!")
     
     print(f"\n{'='*70}")
     print("TEST COMPLETE")

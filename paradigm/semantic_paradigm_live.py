@@ -407,22 +407,10 @@ def run_experiment_live(
         if verbose:
             print(f"[PROTOCOL] Generating protocol: {blocks_to_generate} blocks (of {n_blocks} configured), {n_trials_total} total trials, {trials_per_block} trials per block")
         
-        # Generate case assignments for ALL trials (stratified: 50% upper, 50% lower)
-        # This ensures case is balanced across entire experiment, not per block
-        import numpy as np
-        n_upper = n_trials_total // 2
-        n_lower = n_trials_total - n_upper
-        global_case_list = ['upper'] * n_upper + ['lower'] * n_lower
-        # Use timestamp + participant for reproducible but unique case randomization
-        case_seed_str = f"{participant_id}_{timestamp}_cases"
-        case_seed = hash(case_seed_str) % (2**31)
-        np.random.seed(case_seed)
-        np.random.shuffle(global_case_list)
-        
         # Generate trial sequences for blocks we need
         # Each block gets unique seed but same timestamp ensures reproducibility
+        # Case and concept-item stratification happens within each block
         all_blocks_trials = []
-        case_idx = 0
         for b in range(blocks_to_generate):
             # For the last block, include any remainder trials
             if b == blocks_to_generate - 1:
@@ -432,6 +420,7 @@ def run_experiment_live(
             else:
                 block_trial_count = trials_per_block
             
+            # create_stratified_block_sequence handles both concept-item and case stratification per block
             block_trials = create_stratified_block_sequence(
                 n_trials_per_block=block_trial_count,
                 concepts_a=config.get('CONCEPTS_CATEGORY_A', []),
@@ -440,14 +429,6 @@ def run_experiment_live(
                 participant_id=participant_id,
                 timestamp=timestamp
             )
-            
-            # Assign cases from global case list
-            for trial in block_trials:
-                if case_idx < len(global_case_list):
-                    trial['case'] = global_case_list[case_idx]
-                    case_idx += 1
-                else:
-                    trial['case'] = 'lower'  # Fallback if somehow we run out
             
             all_blocks_trials.append(block_trials)
         

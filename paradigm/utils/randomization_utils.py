@@ -249,23 +249,35 @@ def create_stratified_block_sequence(
     np.random.shuffle(concept_list_a)
     np.random.shuffle(concept_list_b)
     
-    # Interleave A and B (alternating)
-    # Note: Case assignment is handled at protocol generation level (globally across all trials)
-    # This function creates trials without case - case will be assigned when protocol is created
+    # Create case assignments for THIS BLOCK (stratified: 50% upper, 50% lower per block)
+    n_total_trials = len(concept_list_a) + len(concept_list_b)
+    n_upper = n_total_trials // 2
+    n_lower = n_total_trials - n_upper
+    
+    # Create list of cases (half upper, half lower) for this block
+    case_list = ['upper'] * n_upper + ['lower'] * n_lower
+    np.random.shuffle(case_list)  # Randomize case order within block
+    
+    # Interleave A and B (alternating) and assign cases
     trials = []
+    case_idx = 0
     for i in range(max(len(concept_list_a), len(concept_list_b))):
         if i < len(concept_list_a):
             trials.append({
                 'trial_num': len(trials) + 1,
                 'concept': concept_list_a[i],
-                'category': 'A'
+                'category': 'A',
+                'case': case_list[case_idx] if case_idx < len(case_list) else 'lower'
             })
+            case_idx += 1
         if i < len(concept_list_b):
             trials.append({
                 'trial_num': len(trials) + 1,
                 'concept': concept_list_b[i],
-                'category': 'B'
+                'category': 'B',
+                'case': case_list[case_idx] if case_idx < len(case_list) else 'lower'
             })
+            case_idx += 1
     
     return trials
 
