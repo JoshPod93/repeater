@@ -179,48 +179,36 @@ def create_progress_indicator(win: visual.Window,
 
 
 def create_visual_mask(win: visual.Window,
-                       size: Tuple[float, float] = (1.0, 1.0),
-                       noise_type: str = 'Binary') -> visual.NoiseStim:
+                       height: float = 0.08,
+                       color: str = 'white') -> visual.TextStim:
     """
-    Create visual mask stimulus (pattern mask to prevent afterimages).
+    Create simple text-based visual mask for orthographic stimuli.
+    
+    Uses a pattern of hash symbols to mask text stimuli - standard practice
+    for orthographic masking to prevent afterimages.
     
     Parameters
     ----------
     win : visual.Window
         Window to draw on
-    size : tuple
-        Size of mask (width, height) in window units
-    noise_type : str
-        Type of noise ('Binary', 'Normal', 'Uniform')
+    height : float
+        Text height (should match concept text height)
+    color : str
+        Text color
     
     Returns
     -------
-    visual.NoiseStim
-        Visual mask stimulus
+    visual.TextStim
+        Visual mask stimulus (hash pattern)
     """
-    return visual.NoiseStim(
-        win=win,
-        name='mask',
-        noiseType=noise_type,
-        size=size,
-        units='height',
-        ori=0.0,
-        phase=(0.0, 0.0),
-        texRes=128,
-        mask='None',
-        opacity=1.0,
-        contrast=1.0,
-        blendMode='add',
-        filter='None',
-        noiseElementSize=0.05,
-        noiseBaseSf=8.0,
-        noiseBW=1.0,
-        noiseBWO=30.0,
-        noiseFractalPower=0.0,
-        noiseFilterLower=1.0,
-        noiseFilterUpper=2.0,
-        noiseFilterOrder=1.0,
-        noiseClip=3.0
+    # Simple hash pattern mask - standard for orthographic stimuli
+    mask_text = '####'
+    return visual.TextStim(
+        win,
+        text=mask_text,
+        height=height,
+        color=color,
+        bold=True
     )
 
 
