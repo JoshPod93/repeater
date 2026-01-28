@@ -534,7 +534,19 @@ def run_experiment_simulation(
     
     # Data storage
     trial_data_list = []
-    metadata = create_metadata(participant_id, config)
+    # Get number of trials in this block for metadata
+    if not existing_blocks:
+        trials_per_block = len(all_blocks_trials[block_num])
+    else:
+        if protocol is None:
+            protocol = load_randomization_protocol(
+                subject_folder=subject_folder,
+                participant_id=participant_id
+            )
+        block_trials_temp = get_block_trials_from_protocol(protocol, block_num)
+        trials_per_block = len(block_trials_temp)
+    
+    metadata = create_metadata(participant_id, config, trials_per_block=trials_per_block)
     
     # Clear screen and show warning
     display.clear_screen()

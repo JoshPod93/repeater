@@ -12,7 +12,8 @@ from typing import Dict, List, Any, Optional
 
 
 def create_metadata(participant_id: str,
-                   config: Dict[str, Any]) -> Dict[str, Any]:
+                   config: Dict[str, Any],
+                   trials_per_block: Optional[int] = None) -> Dict[str, Any]:
     """
     Create metadata dictionary for experiment.
     
@@ -22,19 +23,27 @@ def create_metadata(participant_id: str,
         Participant identifier
     config : dict
         Configuration dictionary
+    trials_per_block : int, optional
+        Number of trials in this block. If provided, used instead of n_trials.
         
     Returns
     -------
     dict
         Metadata dictionary
     """
+    # Use trials_per_block if provided, otherwise fall back to config
+    if trials_per_block is not None:
+        n_trials_value = trials_per_block
+    else:
+        n_trials_value = config.get('n_trials', config.get('TRIALS_PER_BLOCK', 10))
+    
     return {
         'participant_id': participant_id,
         'date': datetime.now().strftime('%Y-%m-%d'),
         'time': datetime.now().strftime('%H:%M:%S'),
         'concepts_category_a': config.get('concepts_category_a', []),
         'concepts_category_b': config.get('concepts_category_b', []),
-        'n_trials': config.get('n_trials', 20),
+        'n_trials': n_trials_value,  # Trials in this block
         'timing': {
             'fixation': config.get('fixation_duration', 2.0),
             'prompt': config.get('prompt_duration', 2.0),
@@ -130,7 +139,7 @@ def save_trial_data(metadata: Dict[str, Any],
     
     # Generate filename - if in block folder, no need for block number suffix
     # Format: sub-{participant_id}_{timestamp}_trials.json
-    base_filename = f"sub-{participant_id}_{timestamp}_trials"
+    base_filename = f"sub-{participant_id}_{timestamp}"
     
     saved_files = {}
     
