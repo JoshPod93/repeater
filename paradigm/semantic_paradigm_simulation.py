@@ -203,6 +203,12 @@ def run_single_trial_simulation(
     
     # Visual mask to prevent afterimages (NO JITTER - critical timing)
     display.show_mask()
+    timestamp, _ = trigger_handler.send_trigger(
+        TRIGGER_CODES['mask'],
+        event_name='mask'
+    )
+    trial_data['timestamps']['mask'] = timestamp
+    print(f"  [SIM] Mask at {timestamp:.3f}s")
     mask_duration = config.get('MASK_DURATION', 0.2)
     core.wait(mask_duration)
     

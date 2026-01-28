@@ -274,6 +274,9 @@ TRIGGER_CODES = {
     'concept_category_a': 10,
     'concept_category_b': 20,
     
+    # Visual mask (after concept, before beeps)
+    'mask': 25,
+    
     # Beep sequence (unique code for each beep to allow detailed analysis)
     'beep_start': 30,
     'beep_1': 31,  # First beep
