@@ -348,7 +348,7 @@ def main():
     parser.add_argument('--bdf-file', type=str, help='Path to BDF file')
     parser.add_argument('--results-dir', type=str, help='Path to results directory containing trigger CSV')
     parser.add_argument('--participant-id', type=str, help='Participant ID (auto-detects paths)')
-    parser.add_argument('--output-dir', type=str, default='.', help='Output directory for plots')
+    parser.add_argument('--output-dir', type=str, default=None, help='Output directory for plots (defaults to results directory)')
     
     args = parser.parse_args()
     
@@ -382,7 +382,13 @@ def main():
         return
     
     bdf_path = args.bdf_file
-    results_dir = args.results_dir
+    results_dir = Path(args.results_dir)
+    
+    # Set output directory to results directory if not specified
+    if args.output_dir is None:
+        args.output_dir = str(results_dir)
+    else:
+        args.output_dir = str(Path(args.output_dir))
     
     # Load triggers
     try:
@@ -399,7 +405,10 @@ def main():
         
         # Create validation plot
         participant_id = Path(bdf_path).stem.replace('sub_', '').replace('.bdf', '')
-        output_path = os.path.join(args.output_dir, f'trigger_validation_{participant_id}.png')
+        output_dir = Path(args.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)  # Ensure directory exists
+        output_path = str(output_dir / f'trigger_validation_{participant_id}.png')
+        print(f"Saving validation plot to: {output_path}")
         create_validation_plot(bdf_triggers, mirror_triggers, aligned_pairs, 
                              bdf_unmatched, mirror_unmatched, output_path)
         
