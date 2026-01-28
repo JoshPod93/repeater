@@ -12,7 +12,7 @@ Complete list of all pauses, waits, and intervals during a single trial period.
 - `REST_DURATION = 1.0` seconds
 - `INTER_TRIAL_INTERVAL = 0.5` seconds
 - `USE_JITTER = True`
-- `JITTER_RANGE = 0.1` (±10%)
+- `JITTER_RANGE = 0.1` (+/-10%)
 
 ---
 
@@ -55,15 +55,15 @@ Complete list of all pauses, waits, and intervals during a single trial period.
 - **Total Duration**: 8 × 0.8s = **6.4 seconds**
 - **Purpose**: Rhythmic cue intervals for visualization repetitions
 
-### 5. **Rest Period** ⚠️ JITTERED
-- **Duration**: `REST_DURATION = 1.0` seconds (±10% jitter)
+### 6. **Rest Period** [JITTERED]
+- **Duration**: `REST_DURATION = 1.0` seconds (+/-10% jitter)
 - **Jitter**: **YES** - Uses `jittered_wait()` with `JITTER_RANGE = 0.1`
 - **Actual Range**: 0.9 - 1.1 seconds (randomized per trial)
 - **Location**: After visualization period (all beeps complete)
 - **Visual**: Blank screen
 - **Purpose**: Post-trial rest period
 
-### 7. **Inter-Trial Interval** ⚠️ JITTERED
+### 7. **Inter-Trial Interval** [JITTERED]
 - **Duration**: `INTER_TRIAL_INTERVAL = 0.5` seconds (+/-10% jitter)
 - **Jitter**: **YES** - Uses `jittered_wait()` with `JITTER_RANGE = 0.1`
 - **Actual Range**: 0.45 - 0.55 seconds (randomized per trial)
@@ -77,19 +77,20 @@ Complete list of all pauses, waits, and intervals during a single trial period.
 
 | Pause Name | Duration (s) | Jittered? | When | Visual |
 |------------|--------------|-----------|------|--------|
-| Fixation Cross | 2.0 | ❌ No | Start of trial | Fixation cross |
-| Concept Display | 2.0 | ❌ No | After fixation | Concept word |
-| Post-Concept Pause | 1.0 (±0.1) | ✅ Yes | After concept | Blank screen |
-| Beep Interval #1 | 0.8 | ❌ No | After beep 1 | Fixation cross |
-| Beep Interval #2 | 0.8 | ❌ No | After beep 2 | Fixation cross |
-| Beep Interval #3 | 0.8 | ❌ No | After beep 3 | Fixation cross |
-| Beep Interval #4 | 0.8 | ❌ No | After beep 4 | Fixation cross |
-| Beep Interval #5 | 0.8 | ❌ No | After beep 5 | Fixation cross |
-| Beep Interval #6 | 0.8 | ❌ No | After beep 6 | Fixation cross |
-| Beep Interval #7 | 0.8 | ❌ No | After beep 7 | Fixation cross |
-| Beep Interval #8 | 0.8 | ❌ No | After beep 8 | Fixation cross |
-| Rest Period | 1.0 (±0.1) | ✅ Yes | After beeps | Blank screen |
-| Inter-Trial Interval | 0.5 (±0.05) | ✅ Yes | Between trials | Blank screen |
+| Fixation Cross | 2.0 | No | Start of trial | Fixation cross |
+| Concept Display | 2.0 | No | After fixation | Concept word |
+| Visual Mask | 0.2 | No | After concept | Pattern mask |
+| Post-Concept Pause | 1.0 (+/-0.1) | Yes | After mask | Blank screen |
+| Beep Interval #1 | 0.8 | No | After beep 1 | Fixation cross |
+| Beep Interval #2 | 0.8 | No | After beep 2 | Fixation cross |
+| Beep Interval #3 | 0.8 | No | After beep 3 | Fixation cross |
+| Beep Interval #4 | 0.8 | No | After beep 4 | Fixation cross |
+| Beep Interval #5 | 0.8 | No | After beep 5 | Fixation cross |
+| Beep Interval #6 | 0.8 | No | After beep 6 | Fixation cross |
+| Beep Interval #7 | 0.8 | No | After beep 7 | Fixation cross |
+| Beep Interval #8 | 0.8 | No | After beep 8 | Fixation cross |
+| Rest Period | 1.0 (+/-0.1) | Yes | After beeps | Blank screen |
+| Inter-Trial Interval | 0.5 (+/-0.05) | Yes | Between trials | Blank screen |
 
 ---
 
