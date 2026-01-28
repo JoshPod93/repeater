@@ -131,24 +131,36 @@ if conda env list | grep -q "^repeat_analyse"; then
         echo "  python scripts/validate_triggers.py --participant-id $PARTICIPANT_ID"
     else
         echo ""
-        echo "Running comprehensive trigger validation..."
-        python scripts/validate_triggers.py --participant-id "$PARTICIPANT_ID"
+        echo "Running comprehensive data evaluation..."
+        python scripts/comprehensive_data_evaluation.py --participant-id "$PARTICIPANT_ID"
+        
+        EVAL_EXIT=$?
+        if [ $EVAL_EXIT -eq 0 ]; then
+            echo ""
+            echo "[OK] Comprehensive evaluation completed successfully"
+        else
+            echo ""
+            echo "[WARNING] Comprehensive evaluation completed with errors (exit code: $EVAL_EXIT)"
+        fi
+        
+        echo ""
+        echo "Running trigger alignment validation..."
+        python scripts/validate_captured_data.py --participant-id "$PARTICIPANT_ID"
         
         VALIDATION_EXIT=$?
         if [ $VALIDATION_EXIT -eq 0 ]; then
             echo ""
-            echo "[OK] Trigger validation completed successfully"
+            echo "[OK] Trigger alignment validation completed successfully"
         else
             echo ""
-            echo "[WARNING] Trigger validation completed with errors (exit code: $VALIDATION_EXIT)"
+            echo "[WARNING] Trigger alignment validation completed with errors (exit code: $VALIDATION_EXIT)"
         fi
         
         echo ""
         echo "Evaluation complete!"
         echo ""
-        echo "Note: For additional evaluation scripts, run manually:"
-        echo "  python scripts/comprehensive_data_evaluation.py"
-        echo "  python scripts/validate_captured_data.py"
+        echo "Note: For detailed BDF trigger validation (if needed), run manually:"
+        echo "  python scripts/validate_triggers.py --participant-id $PARTICIPANT_ID"
     fi
 else
     echo "WARNING: repeat_analyse environment not found"
@@ -157,7 +169,8 @@ else
     echo ""
     echo "Then run validation manually:"
     echo "  conda activate repeat_analyse"
-    echo "  python scripts/validate_triggers.py --participant-id $PARTICIPANT_ID"
+    echo "  python scripts/comprehensive_data_evaluation.py --participant-id $PARTICIPANT_ID"
+    echo "  python scripts/validate_captured_data.py --participant-id $PARTICIPANT_ID"
 fi
 
 echo ""

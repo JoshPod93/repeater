@@ -117,24 +117,36 @@ if ($envList -match "repeat_analyse") {
         Write-Host "  python scripts/validate_triggers.py --participant-id $ParticipantId" -ForegroundColor Gray
     } else {
         Write-Host ""
-        Write-Host "Running comprehensive trigger validation..." -ForegroundColor Gray
-        python scripts/validate_triggers.py --participant-id "$ParticipantId"
+        Write-Host "Running comprehensive data evaluation..." -ForegroundColor Gray
+        python scripts/comprehensive_data_evaluation.py --participant-id "$ParticipantId"
+        
+        $evalExit = $LASTEXITCODE
+        if ($evalExit -eq 0) {
+            Write-Host ""
+            Write-Host "[OK] Comprehensive evaluation completed successfully" -ForegroundColor Green
+        } else {
+            Write-Host ""
+            Write-Host "[WARNING] Comprehensive evaluation completed with errors (exit code: $evalExit)" -ForegroundColor Yellow
+        }
+        
+        Write-Host ""
+        Write-Host "Running trigger alignment validation..." -ForegroundColor Gray
+        python scripts/validate_captured_data.py --participant-id "$ParticipantId"
         
         $validationExit = $LASTEXITCODE
         if ($validationExit -eq 0) {
             Write-Host ""
-            Write-Host "[OK] Trigger validation completed successfully" -ForegroundColor Green
+            Write-Host "[OK] Trigger alignment validation completed successfully" -ForegroundColor Green
         } else {
             Write-Host ""
-            Write-Host "[WARNING] Trigger validation completed with errors (exit code: $validationExit)" -ForegroundColor Yellow
+            Write-Host "[WARNING] Trigger alignment validation completed with errors (exit code: $validationExit)" -ForegroundColor Yellow
         }
         
         Write-Host ""
         Write-Host "Evaluation complete!" -ForegroundColor Green
         Write-Host ""
-        Write-Host "Note: For additional evaluation scripts, run manually:" -ForegroundColor Gray
-        Write-Host "  python scripts/comprehensive_data_evaluation.py" -ForegroundColor Gray
-        Write-Host "  python scripts/validate_captured_data.py" -ForegroundColor Gray
+        Write-Host "Note: For detailed BDF trigger validation (if needed), run manually:" -ForegroundColor Gray
+        Write-Host "  python scripts/validate_triggers.py --participant-id $ParticipantId" -ForegroundColor Gray
     }
 } else {
     Write-Host "WARNING: repeat_analyse environment not found" -ForegroundColor Yellow
@@ -143,7 +155,8 @@ if ($envList -match "repeat_analyse") {
     Write-Host ""
     Write-Host "Then run validation manually:" -ForegroundColor Yellow
     Write-Host "  conda activate repeat_analyse" -ForegroundColor Gray
-    Write-Host "  python scripts/validate_triggers.py --participant-id $ParticipantId" -ForegroundColor Gray
+    Write-Host "  python scripts/comprehensive_data_evaluation.py --participant-id $ParticipantId" -ForegroundColor Gray
+    Write-Host "  python scripts/validate_captured_data.py --participant-id $ParticipantId" -ForegroundColor Gray
 }
 
 Write-Host ""
