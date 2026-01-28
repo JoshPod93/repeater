@@ -4,6 +4,7 @@ Comprehensive evaluation of collected data - complete summary report.
 """
 
 import sys
+import argparse
 import pandas as pd
 from pathlib import Path
 from collections import Counter
@@ -15,8 +16,32 @@ sys.path.insert(0, str(project_root))
 
 from config import load_config
 
+def find_latest_results_dir(participant_id: str = '9999') -> Path:
+    """Find the latest results directory for a participant."""
+    results_base = project_root / 'data' / 'results'
+    pattern = f'sub-{participant_id}_*'
+    matching_dirs = list(results_base.glob(pattern))
+    
+    if not matching_dirs:
+        raise FileNotFoundError(f"No results directory found for participant {participant_id}")
+    
+    # Return the most recently modified directory
+    latest_dir = max(matching_dirs, key=lambda p: p.stat().st_mtime)
+    return latest_dir
+
 def main():
-    results_dir = project_root / 'data' / 'results' / 'sub-9999_20260127_171306'
+    parser = argparse.ArgumentParser(description='Comprehensive data evaluation')
+    parser.add_argument('--participant-id', type=str, default='9999',
+                       help='Participant ID (default: 9999)')
+    args = parser.parse_args()
+    
+    # Find latest results directory
+    try:
+        results_dir = find_latest_results_dir(args.participant_id)
+        print(f"Using results directory: {results_dir.name}")
+    except FileNotFoundError as e:
+        print(f"ERROR: {e}")
+        return
     csv_files = sorted(results_dir.glob('*_triggers.csv'))
     block_dirs = sorted([d for d in results_dir.iterdir() if d.is_dir() and d.name.startswith('Block_')])
     
@@ -130,8 +155,9 @@ def main():
     print(f"\n8. SUMMARY:")
     print(f"   Blocks: {len(block_dirs)}/10 completed")
     print(f"   Triggers: {total_sent}/{expected_total}")
-    print(f"   Completion: {(total_sent/expected_total)*100:.1f}%")
-    print(f"   Status: {'[COMPLETE]' if total_sent == expected_total else '[INCOMPLETE - Missing Block 10]'}")
+    if expected_total > 0:
+        print(f"   Completion: {(total_sent/expected_total)*100:.1f}%")
+    print(f"   Status: {'[COMPLETE]' if total_sent == expected_total and len(block_dirs) == 10 else '[INCOMPLETE]'}")
     
     print("\n" + "="*80)
 

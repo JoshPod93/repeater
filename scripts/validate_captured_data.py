@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Validate captured data alignment - CSV vs BDF vs expected (for 9 blocks).
+Validate captured data alignment - CSV vs BDF vs expected.
 """
 
 import sys
+import argparse
 import pandas as pd
 from pathlib import Path
 from collections import Counter
@@ -14,12 +15,42 @@ sys.path.insert(0, str(project_root))
 
 from config import load_config
 
+def find_latest_results_dir(participant_id: str = '9999') -> Path:
+    """Find the latest results directory for a participant."""
+    results_base = project_root / 'data' / 'results'
+    pattern = f'sub-{participant_id}_*'
+    matching_dirs = list(results_base.glob(pattern))
+    
+    if not matching_dirs:
+        raise FileNotFoundError(f"No results directory found for participant {participant_id}")
+    
+    # Return the most recently modified directory
+    latest_dir = max(matching_dirs, key=lambda p: p.stat().st_mtime)
+    return latest_dir
+
 def main():
-    results_dir = project_root / 'data' / 'results' / 'sub-9999_20260127_171306'
-    bdf_path = project_root / 'data' / 'sub_9999' / 'sub_9999.bdf'
+    parser = argparse.ArgumentParser(description='Validate captured data')
+    parser.add_argument('--participant-id', type=str, default='9999',
+                       help='Participant ID (default: 9999)')
+    args = parser.parse_args()
+    
+    # Find latest results directory
+    try:
+        results_dir = find_latest_results_dir(args.participant_id)
+        print(f"Using results directory: {results_dir.name}")
+    except FileNotFoundError as e:
+        print(f"ERROR: {e}")
+        return
+    
+    # BDF path based on participant ID
+    bdf_path = project_root / 'data' / f'sub_{args.participant_id}' / f'sub_{args.participant_id}.bdf'
+    
+    # Count actual blocks completed
+    block_dirs = sorted([d for d in results_dir.iterdir() if d.is_dir() and d.name.startswith('Block_')])
+    n_blocks = len(block_dirs)
     
     print("="*80)
-    print("CAPTURED DATA VALIDATION (9 Blocks)")
+    print(f"CAPTURED DATA VALIDATION ({n_blocks} Blocks)")
     print("="*80)
     
     # Load CSV triggers
@@ -34,42 +65,54 @@ def main():
     
     # Load BDF triggers
     print("\n2. LOADING BDF TRIGGERS:")
-    try:
-        import mne
-        import numpy as np
-        
-        raw = mne.io.read_raw_bdf(bdf_path, preload=True, verbose=False)
-        status_ch = None
-        for ch_name in raw.ch_names:
-            if 'Status' in ch_name or 'STIM' in ch_name:
-                status_ch = ch_name
-                break
-        
-        if status_ch:
-            ch_idx = raw.ch_names.index(status_ch)
-            trigger_data = raw.get_data()[ch_idx, :]
-            trigger_values = (trigger_data.astype(int) & 0xFF)
-            diff = np.diff(trigger_values)
-            trigger_indices = np.where(diff != 0)[0] + 1
-            
-            bdf_triggers = []
-            for idx in trigger_indices:
-                code = int(trigger_values[idx])
-                if code > 0:
-                    bdf_triggers.append(code)
-            
-            print(f"   Total BDF triggers: {len(bdf_triggers)}")
-        else:
-            print("   [ERROR] No Status channel found")
-            bdf_triggers = []
-    except Exception as e:
-        print(f"   [ERROR] Failed to load BDF: {e}")
+    if not bdf_path.exists():
+        print(f"   [SKIP] BDF file not found: {bdf_path}")
+        print("   BDF validation will be skipped")
         bdf_triggers = []
+    else:
+        try:
+            import mne
+            import numpy as np
+            
+            # Try loading without preload first to check file size
+            print(f"   Attempting to load BDF: {bdf_path.name}")
+            raw = mne.io.read_raw_bdf(bdf_path, preload=False, verbose=False)
+            
+            status_ch = None
+            for ch_name in raw.ch_names:
+                if 'Status' in ch_name or 'STIM' in ch_name:
+                    status_ch = ch_name
+                    break
+            
+            if status_ch:
+                ch_idx = raw.ch_names.index(status_ch)
+                # Load only the status channel data
+                trigger_data = raw.get_data(picks=[status_ch])[0].astype(np.int64)
+                trigger_values = (trigger_data & 0xFF)
+                diff = np.diff(trigger_values)
+                trigger_indices = np.where(diff != 0)[0] + 1
+                
+                bdf_triggers = []
+                for idx in trigger_indices:
+                    code = int(trigger_values[idx])
+                    if code > 0:
+                        bdf_triggers.append(code)
+                
+                print(f"   Total BDF triggers: {len(bdf_triggers)}")
+            else:
+                print("   [ERROR] No Status channel found")
+                bdf_triggers = []
+        except MemoryError as e:
+            print(f"   [SKIP] BDF file too large to load into memory: {e}")
+            print("   BDF validation skipped - use validate_triggers.py for detailed BDF analysis")
+            bdf_triggers = []
+        except Exception as e:
+            print(f"   [ERROR] Failed to load BDF: {e}")
+            bdf_triggers = []
     
-    # Calculate expected for 9 blocks
-    print("\n3. EXPECTED TRIGGERS (9 blocks):")
+    # Calculate expected triggers
+    print(f"\n3. EXPECTED TRIGGERS ({n_blocks} blocks):")
     config = load_config()
-    n_blocks = 9  # Actually completed
     n_trials_per_block = config.get('TRIALS_PER_BLOCK', 10)
     n_beeps = config.get('N_BEEPS', 8)
     
@@ -135,8 +178,8 @@ def main():
         if extra:
             print(f"   [WARNING] Codes in CSV but not BDF: {sorted(extra)}")
     
-    # Expected code counts for 9 blocks
-    print("\n7. EXPECTED CODE COUNTS (9 blocks):")
+    # Expected code counts
+    print(f"\n7. EXPECTED CODE COUNTS ({n_blocks} blocks):")
     expected_counts = {
         'block_start': n_blocks,  # 61-69
         'block_end': n_blocks,   # 71-79
@@ -149,8 +192,8 @@ def main():
     }
     
     actual_counts = {
-        'block_start': sum(1 for c in csv_triggers if 61 <= c <= 69),
-        'block_end': sum(1 for c in csv_triggers if 71 <= c <= 79),
+        'block_start': sum(1 for c in csv_triggers if 61 <= c <= 70),
+        'block_end': sum(1 for c in csv_triggers if 71 <= c <= 80),
         'trial_start': sum(1 for c in csv_triggers if 101 <= c <= 110),
         'trial_end': sum(1 for c in csv_triggers if 151 <= c <= 160),
         'fixation': csv_codes.get(1, 0),
@@ -187,7 +230,7 @@ def main():
     if all_match:
         print("\n[OK] PERFECT ALIGNMENT!")
         print("   - CSV and BDF have identical trigger sequences")
-        print("   - Counts match expected for 9 blocks")
+        print(f"   - Counts match expected for {n_blocks} blocks")
         print("   - All codes are correct and within 0-255")
     else:
         print("\n[WARNING] Some discrepancies found (see details above)")
