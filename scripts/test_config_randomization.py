@@ -118,6 +118,21 @@ def test_randomization():
         status = "OK" if abs(count - expected) <= 2 else "WARN"
         print(f"    {concept:12s}: {count:3d} (expected ~{expected}) [{status}]")
     
+    # Check case distribution (if cases are assigned)
+    case_counts = Counter([t.get('case', 'lower') for t in all_trials])
+    if 'upper' in case_counts or 'lower' in case_counts:
+        print(f"\n  Case distribution:")
+        print(f"    Upper case: {case_counts.get('upper', 0)} trials")
+        print(f"    Lower case: {case_counts.get('lower', 0)} trials")
+        total_cases = case_counts.get('upper', 0) + case_counts.get('lower', 0)
+        if total_cases > 0:
+            upper_pct = (case_counts.get('upper', 0) / total_cases) * 100
+            print(f"    Distribution: {upper_pct:.1f}% upper, {100-upper_pct:.1f}% lower")
+            if abs(upper_pct - 50) <= 5:
+                print(f"    [OK] Case distribution is balanced (~50/50)")
+            else:
+                print(f"    [WARN] Case distribution is not balanced")
+    
     print(f"\n{'='*70}")
     print("TEST COMPLETE")
     print("="*70)

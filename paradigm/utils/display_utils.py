@@ -231,7 +231,7 @@ class DisplayManager:
         self.win.flip()
     
     def show_concept(self, concept: str, show_progress: bool = False, 
-                     progress_text: Optional[str] = None):
+                     progress_text: Optional[str] = None, case: str = 'lower'):
         """
         Display concept word.
         
@@ -243,8 +243,16 @@ class DisplayManager:
             Whether to show progress indicator
         progress_text : str, optional
             Progress text to display
+        case : str
+            Case to display: 'upper' for uppercase, 'lower' for lowercase (default: 'lower')
         """
-        self.concept_text.text = concept
+        # Apply case transformation
+        if case == 'upper':
+            display_text = concept.upper()
+        else:
+            display_text = concept.lower()
+        
+        self.concept_text.text = display_text
         self.concept_text.draw()
         
         if show_progress and progress_text:

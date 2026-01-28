@@ -163,11 +163,15 @@ def run_single_trial_live(
     """
     concept = trial_spec['concept']
     category = trial_spec['category']
+    case = trial_spec.get('case', 'lower')  # Get case from trial spec, default to lower
     
-    # Create trial data structure
-    trial_data = create_trial_data_dict(trial_num, concept, category)
+    # Create trial data structure (case already included in trial_spec)
+    trial_data = create_trial_data_dict(trial_num, concept, category, case=case)
     
-    print(f"\nTrial {trial_num}/{total_trials}: {concept} (Category {category})")
+    # Determine display text based on case
+    display_concept = concept.upper() if case == 'upper' else concept.lower()
+    
+    print(f"\nTrial {trial_num}/{total_trials}: {display_concept} (Category {category})")
     
     # Send trial start trigger (unique code for this trial number)
     trial_start_code = get_trial_start_code(trial_num)
@@ -188,9 +192,9 @@ def run_single_trial_live(
     print(f"  Fixation at {timestamp:.3f}s")
     core.wait(config.get('FIXATION_DURATION', 2.0))
     
-    # 2. CONCEPT PRESENTATION
+    # 2. CONCEPT PRESENTATION (with case)
     progress_text = f"Trial {trial_num}/{total_trials}"
-    display.show_concept(concept, show_progress=True, progress_text=progress_text)
+    display.show_concept(concept, show_progress=True, progress_text=progress_text, case=case)
     
     # Send category-specific trigger (OUR codes)
     trigger_code = (TRIGGER_CODES['concept_category_a'] if category == 'A' 
@@ -403,9 +407,22 @@ def run_experiment_live(
         if verbose:
             print(f"[PROTOCOL] Generating protocol: {blocks_to_generate} blocks (of {n_blocks} configured), {n_trials_total} total trials, {trials_per_block} trials per block")
         
+        # Generate case assignments for ALL trials (stratified: 50% upper, 50% lower)
+        # This ensures case is balanced across entire experiment, not per block
+        import numpy as np
+        n_upper = n_trials_total // 2
+        n_lower = n_trials_total - n_upper
+        global_case_list = ['upper'] * n_upper + ['lower'] * n_lower
+        # Use timestamp + participant for reproducible but unique case randomization
+        case_seed_str = f"{participant_id}_{timestamp}_cases"
+        case_seed = hash(case_seed_str) % (2**31)
+        np.random.seed(case_seed)
+        np.random.shuffle(global_case_list)
+        
         # Generate trial sequences for blocks we need
         # Each block gets unique seed but same timestamp ensures reproducibility
         all_blocks_trials = []
+        case_idx = 0
         for b in range(blocks_to_generate):
             # For the last block, include any remainder trials
             if b == blocks_to_generate - 1:
@@ -423,6 +440,15 @@ def run_experiment_live(
                 participant_id=participant_id,
                 timestamp=timestamp
             )
+            
+            # Assign cases from global case list
+            for trial in block_trials:
+                if case_idx < len(global_case_list):
+                    trial['case'] = global_case_list[case_idx]
+                    case_idx += 1
+                else:
+                    trial['case'] = 'lower'  # Fallback if somehow we run out
+            
             all_blocks_trials.append(block_trials)
         
         # Pad remaining blocks with empty lists if needed

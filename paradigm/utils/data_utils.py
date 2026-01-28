@@ -47,7 +47,8 @@ def create_metadata(participant_id: str,
 
 def create_trial_data_dict(trial_num: int,
                           concept: str,
-                          category: str) -> Dict[str, Any]:
+                          category: str,
+                          case: str = 'lower') -> Dict[str, Any]:
     """
     Create trial data dictionary structure.
     
@@ -56,9 +57,11 @@ def create_trial_data_dict(trial_num: int,
     trial_num : int
         Trial number
     concept : str
-        Concept word
+        Concept word (stored in original case)
     category : str
         Category label ('A' or 'B')
+    case : str
+        Display case ('upper' or 'lower')
     
     Returns
     -------
@@ -67,8 +70,9 @@ def create_trial_data_dict(trial_num: int,
     """
     return {
         'trial_num': trial_num,
-        'concept': concept,
+        'concept': concept,  # Store original concept (for analysis)
         'category': category,
+        'case': case,  # Store display case
         'timestamps': {}
     }
 

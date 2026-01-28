@@ -158,11 +158,14 @@ def run_single_trial_simulation(
     """
     concept = trial_spec['concept']
     category = trial_spec['category']
+    case = trial_spec.get('case', 'lower')  # Get case from trial spec, default to lower
     
     # Create trial data structure
-    trial_data = create_trial_data_dict(trial_num, concept, category)
+    trial_data = create_trial_data_dict(trial_num, concept, category, case=case)
     
-    print(f"\n[SIM] Trial {trial_num}/{total_trials}: {concept} (Category {category})")
+    # Determine display text based on case
+    display_concept = concept.upper() if case == 'upper' else concept.lower()
+    print(f"\n[SIM] Trial {trial_num}/{total_trials}: {display_concept} (Category {category})")
     
     # Send trial start trigger (unique code for this trial number)
     trial_start_code = get_trial_start_code(trial_num)
@@ -183,9 +186,9 @@ def run_single_trial_simulation(
     print(f"  [SIM] Fixation at {timestamp:.3f}s")
     core.wait(config.get('FIXATION_DURATION', 2.0))
     
-    # 2. CONCEPT PRESENTATION
+    # 2. CONCEPT PRESENTATION (with case)
     progress_text = f"Trial {trial_num}/{total_trials}"
-    display.show_concept(concept, show_progress=True, progress_text=progress_text)
+    display.show_concept(concept, show_progress=True, progress_text=progress_text, case=case)
     
     # Send category-specific trigger
     trigger_code = (TRIGGER_CODES['concept_category_a'] if category == 'A' 

@@ -210,10 +210,13 @@ def create_stratified_block_sequence(
             concept = np.random.choice(concepts_b) if concepts_b else None
         if concept is None:
             raise ValueError("Cannot create trial: no concepts available")
+        # Random case for single trial
+        case = np.random.choice(['upper', 'lower'])
         return [{
             'trial_num': -1,  # Placeholder, will be set globally later
             'concept': concept,
-            'category': category
+            'category': category,
+            'case': case
         }]
     
     # Calculate how many times each concept should appear in this block
@@ -247,6 +250,8 @@ def create_stratified_block_sequence(
     np.random.shuffle(concept_list_b)
     
     # Interleave A and B (alternating)
+    # Note: Case assignment is handled at protocol generation level (globally across all trials)
+    # This function creates trials without case - case will be assigned when protocol is created
     trials = []
     for i in range(max(len(concept_list_a), len(concept_list_b))):
         if i < len(concept_list_a):
