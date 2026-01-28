@@ -176,6 +176,10 @@ def run_single_trial_simulation(
     trial_data['timestamps']['trial_start'] = timestamp
     print(f"  [SIM] Trial {trial_num} start (trigger {trial_start_code}) at {timestamp:.3f}s")
     
+    # Initialize jitter settings (used throughout trial)
+    use_jitter = config.get('USE_JITTER', True)
+    jitter_range = config.get('JITTER_RANGE', 0.1)
+    
     # 1. TRIAL INDICATOR (centered text, like concept word) - FIRST ELEMENT
     display.show_trial_indicator(trial_num, total_trials)
     timestamp, _ = trigger_handler.send_trigger(
@@ -189,8 +193,6 @@ def run_single_trial_simulation(
     
     # Pause after trial indicator (JITTERED - pause event)
     display.clear_screen()
-    use_jitter = config.get('USE_JITTER', True)
-    jitter_range = config.get('JITTER_RANGE', 0.1)
     post_indicator_pause = config.get('POST_FIXATION_PAUSE', 0.5)  # Use same pause duration
     core.wait(jittered_wait(post_indicator_pause, jitter_range) if use_jitter else post_indicator_pause)
     
