@@ -97,7 +97,8 @@ N_BEEPS = 8                  # Number of rhythmic beeps per concept presentation
                               # Each beep = one repetition = one analysis trial
                               # 8 beeps × 0.8s = 6.4s visualization period per concept
                               # Total analysis trials = N_TRIALS × N_BEEPS
-POST_CONCEPT_PAUSE = 1.0     # Pause after concept disappears, before beeps start
+MASK_DURATION = 0.2          # Duration of visual mask after concept (prevents afterimages)
+POST_CONCEPT_PAUSE = 1.0     # Pause after mask disappears, before beeps start
 REST_DURATION = 1.0          # Blank screen after trial (standard rest period)
 INTER_TRIAL_INTERVAL = 0.5   # Break between trials (prevents fatigue)
 
@@ -114,7 +115,7 @@ JITTER_RANGE = 0.1           # ±10% jitter by default
 
 # Calculate total trial duration
 # Note: Actual duration will vary due to jittering if enabled
-TRIAL_DURATION = (FIXATION_DURATION + PROMPT_DURATION + POST_CONCEPT_PAUSE + 
+TRIAL_DURATION = (FIXATION_DURATION + PROMPT_DURATION + MASK_DURATION + POST_CONCEPT_PAUSE + 
                   (BEEP_INTERVAL * N_BEEPS) + REST_DURATION)
 
 # =============================================================================

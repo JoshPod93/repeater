@@ -201,7 +201,12 @@ def run_single_trial_simulation(
     # NO JITTER - important timing for concept presentation
     core.wait(config.get('PROMPT_DURATION', 2.0))
     
-    # Clear concept and pause before beeps (JITTERED - pause event)
+    # Visual mask to prevent afterimages (NO JITTER - critical timing)
+    display.show_mask()
+    mask_duration = config.get('MASK_DURATION', 0.2)
+    core.wait(mask_duration)
+    
+    # Clear mask and pause before beeps (JITTERED - pause event)
     display.clear_screen()
     use_jitter = config.get('USE_JITTER', True)
     jitter_range = config.get('JITTER_RANGE', 0.1)

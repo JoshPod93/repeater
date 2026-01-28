@@ -32,15 +32,22 @@ Complete list of all pauses, waits, and intervals during a single trial period.
 - **Visual**: Concept word displayed (upper or lower case)
 - **Purpose**: Participant reads and initiates visualization
 
-### 3. **Post-Concept Pause** ⚠️ JITTERED
+### 3. **Visual Mask**
+- **Duration**: `MASK_DURATION = 0.2` seconds
+- **Jitter**: **NO JITTER** (critical timing)
+- **Location**: Immediately after concept disappears
+- **Visual**: Pattern mask (noise stimulus) to prevent afterimages
+- **Purpose**: Erase visual afterimages from concept presentation
+
+### 4. **Post-Concept Pause** ⚠️ JITTERED
 - **Duration**: `POST_CONCEPT_PAUSE = 1.0` seconds (±10% jitter)
 - **Jitter**: **YES** - Uses `jittered_wait()` with `JITTER_RANGE = 0.1`
 - **Actual Range**: 0.9 - 1.1 seconds (randomized per trial)
-- **Location**: After concept disappears, before beeps start
-- **Visual**: Blank screen (concept cleared)
+- **Location**: After mask disappears, before beeps start
+- **Visual**: Blank screen (mask cleared)
 - **Purpose**: Transition pause before visualization period
 
-### 4. **Beep Intervals** (8 intervals total)
+### 5. **Beep Intervals** (8 intervals total)
 - **Duration**: `BEEP_INTERVAL = 0.8` seconds each
 - **Jitter**: **NO JITTER** (critical for rhythmic protocol)
 - **Location**: Between each beep during visualization period
@@ -56,7 +63,7 @@ Complete list of all pauses, waits, and intervals during a single trial period.
 - **Visual**: Blank screen
 - **Purpose**: Post-trial rest period
 
-### 6. **Inter-Trial Interval** ⚠️ JITTERED
+### 7. **Inter-Trial Interval** ⚠️ JITTERED
 - **Duration**: `INTER_TRIAL_INTERVAL = 0.5` seconds (±10% jitter)
 - **Jitter**: **YES** - Uses `jittered_wait()` with `JITTER_RANGE = 0.1`
 - **Actual Range**: 0.45 - 0.55 seconds (randomized per trial)
@@ -91,8 +98,9 @@ Complete list of all pauses, waits, and intervals during a single trial period.
 **Fixed Components** (no jitter):
 - Fixation: 2.0s
 - Concept display: 2.0s
+- Visual mask: 0.2s
 - Beep intervals: 8 × 0.8s = 6.4s
-- **Fixed subtotal**: 10.4s
+- **Fixed subtotal**: 10.6s
 
 **Jittered Components** (varies per trial):
 - Post-concept pause: ~1.0s (±0.1s)
@@ -119,6 +127,7 @@ Complete list of all pauses, waits, and intervals during a single trial period.
 1. **No Jitter Applied To**:
    - Fixation duration (critical baseline)
    - Concept presentation duration (critical for reading/initiation)
+   - Visual mask duration (critical for afterimage prevention)
    - Beep intervals (critical for rhythmic protocol - must be exact 0.8s)
 
 2. **Jitter Applied To**:
