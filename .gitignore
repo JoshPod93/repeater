@@ -63,8 +63,6 @@ desktop.ini
 *~
 
 # Project specific
-excess/
-files/
 *.zip
 
 # Keep structure but ignore contents
