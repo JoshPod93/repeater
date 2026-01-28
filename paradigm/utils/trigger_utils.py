@@ -269,6 +269,7 @@ TRIGGER_CODES = {
     # Trial-level events (base codes)
     'trial_start': 2,
     'fixation': 1,
+    'trial_indicator': 3,  # Trial number display (shown before concept)
     
     # Concept presentation (category-specific)
     'concept_category_a': 10,

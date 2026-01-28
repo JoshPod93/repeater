@@ -201,6 +201,12 @@ def run_single_trial_live(
     
     # 2. TRIAL INDICATOR (shows trial number first, before concept)
     display.show_trial_indicator(trial_num, total_trials)
+    timestamp, _ = trigger_handler.send_trigger(
+        TRIGGER_CODES['trial_indicator'],
+        event_name=f'trial_indicator_{trial_num}'
+    )
+    trial_data['timestamps']['trial_indicator'] = timestamp
+    print(f"  Trial indicator at {timestamp:.3f}s")
     trial_indicator_duration = 1.0  # Show trial indicator for 1 second
     core.wait(trial_indicator_duration)
     
