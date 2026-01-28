@@ -214,16 +214,17 @@ def run_single_trial_live(
     # NO JITTER - important timing for concept presentation
     core.wait(config.get('PROMPT_DURATION', 2.0))
     
-    # Visual mask to prevent afterimages (NO JITTER - critical timing)
-    display.show_mask()
+    # Visual mask to prevent afterimages (flashing pattern for stronger masking)
     timestamp, _ = trigger_handler.send_trigger(
         TRIGGER_CODES['mask'],
         event_name='mask'
     )
     trial_data['timestamps']['mask'] = timestamp
     print(f"  Mask at {timestamp:.3f}s")
-    mask_duration = config.get('MASK_DURATION', 0.2)
-    core.wait(mask_duration)
+    mask_duration = config.get('MASK_DURATION', 0.1)
+    mask_flashes = config.get('MASK_FLASHES', 3)
+    # Flash mask on/off/on pattern for stronger masking
+    display.show_mask_flash(mask_duration)
     
     # Post-mask pause (JITTERED - pause event)
     display.clear_screen()
