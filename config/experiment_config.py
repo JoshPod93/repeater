@@ -199,7 +199,10 @@ BEEP_DURATION = 0.1          # Duration of each beep (seconds)
 # BIOSEMI CONFIGURATION
 # =============================================================================
 
-BIOSEMI_PORT = 'COM4'        # Serial port for Biosemi (Windows: COM3, COM4, etc.)
+# Biosemi port - can be overridden via environment variable BIOSEMI_PORT
+# Defaults to COM4 on Windows, /dev/ttyUSB0 on Linux
+import os
+BIOSEMI_PORT = os.environ.get('BIOSEMI_PORT', 'COM4' if os.name == 'nt' else '/dev/ttyUSB0')
 BIOSEMI_BAUDRATE = 115200    # Serial port baudrate
 BIOSEMI_ENABLED = True       # Enable Biosemi connection (for live experiments)
 

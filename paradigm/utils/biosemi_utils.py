@@ -23,8 +23,22 @@ _trigger_failures = []
 
 
 def get_default_port():
-    """Get the default COM port for this system."""
-    return 'COM4'  # Change this to your preferred default port
+    """Get the default COM port for this system.
+    
+    Checks environment variable BIOSEMI_PORT first, then falls back to platform-specific default.
+    """
+    import os
+    # Check environment variable first (allows per-machine configuration)
+    env_port = os.environ.get('BIOSEMI_PORT')
+    if env_port:
+        return env_port
+    
+    # Platform-specific defaults
+    import platform
+    if platform.system() == 'Windows':
+        return 'COM4'  # Common Windows default
+    else:
+        return '/dev/ttyUSB0'  # Common Linux default
 
 
 def open_serial_port(port=None, baudrate=115200):
