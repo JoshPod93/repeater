@@ -2,6 +2,8 @@
 
 Quick reference for running all experiment and analysis commands.
 
+**For initial setup on a new machine, see `SETUP.md`**
+
 ## Prerequisites
 
 Activate the appropriate conda environment:

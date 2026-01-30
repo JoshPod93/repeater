@@ -103,36 +103,13 @@ repeater/
 └── SETUP.md             # This file
 ```
 
-## Running Experiments
+## Next Steps
 
-### Live Experiment (with Biosemi)
-
-```bash
-conda activate repeat
-python paradigm/semantic_paradigm_live.py --participant-id P001
-```
-
-### Simulation (no hardware)
-
-```bash
-conda activate repeat
-python paradigm/semantic_paradigm_simulation.py --participant-id sim_001
-```
-
-### Run All Blocks
-
-```bash
-conda activate repeat
-bash scripts/run_all_blocks.sh P001
-```
-
-## Analysis and Validation
-
-```bash
-conda activate repeat_analyse
-python scripts/validate_triggers.py --participant-id P001
-python scripts/validate_captured_data.py --participant-id P001
-```
+After installation, see `launch_commands.md` for:
+- Running experiments (live and simulation)
+- Running validation scripts
+- Testing commands
+- All available scripts and options
 
 ## Troubleshooting
 
