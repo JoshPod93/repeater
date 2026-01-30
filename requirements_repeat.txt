@@ -9,5 +9,8 @@ pandas>=1.3.0
 # PsychoPy for experiment control
 psychopy>=2025.2.4
 
+# Monitor/screen info (for fullscreen on correct monitor with correct size)
+screeninfo>=0.8.1
+
 # Serial port communication (Biosemi)
 pyserial>=3.5

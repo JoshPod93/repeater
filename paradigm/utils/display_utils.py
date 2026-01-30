@@ -8,21 +8,44 @@ from psychopy import visual
 from typing import Optional, Tuple
 
 
+def get_monitor_size(screen_index: int) -> Optional[Tuple[int, int]]:
+    """
+    Get (width, height) of the monitor at the given screen index using screeninfo.
+    screen_index 0 = first monitor, 1 = second monitor, etc.
+    Returns None if screeninfo is unavailable or index is out of range.
+    """
+    try:
+        from screeninfo import get_monitors
+        monitors = get_monitors()
+        if 0 <= screen_index < len(monitors):
+            m = monitors[screen_index]
+            return (m.width, m.height)
+    except Exception:
+        pass
+    return None
+
+
 def create_window(size: Tuple[int, int] = (1024, 768), 
                   color: str = 'black',
                   fullscreen: bool = False,
+                  screen: Optional[int] = None,
                   units: str = 'height') -> visual.Window:
     """
     Create PsychoPy window for experiment.
     
+    When fullscreen=True and screen is set, uses screeninfo to get the actual
+    monitor resolution so the window is correctly sized and centered on that display.
+    
     Parameters
     ----------
     size : tuple
-        Window size (width, height)
+        Window size (width, height); ignored for fullscreen when monitor size is detected.
     color : str
         Background color
     fullscreen : bool
         Whether to use fullscreen mode
+    screen : int, optional
+        Monitor index (0 = primary, 1 = second monitor). Used when fullscreen=True.
     units : str
         Coordinate units ('height', 'pix', etc.)
     
@@ -31,12 +54,20 @@ def create_window(size: Tuple[int, int] = (1024, 768),
     visual.Window
         PsychoPy window object
     """
-    return visual.Window(
-        size=size,
+    win_size = size
+    if fullscreen and screen is not None:
+        monitor_size = get_monitor_size(screen)
+        if monitor_size is not None:
+            win_size = monitor_size
+    kwargs = dict(
+        size=win_size,
         color=color,
         units=units,
         fullscr=fullscreen
     )
+    if screen is not None:
+        kwargs['screen'] = screen
+    return visual.Window(**kwargs)
 
 
 def create_fixation_cross(win: visual.Window,

@@ -181,7 +181,8 @@ Press SPACE when ready to continue.
 # =============================================================================
 
 WINDOW_SIZE = (1024, 768)
-FULLSCREEN = False           # Set to True for actual experiments
+FULLSCREEN = True            # Fullscreen for actual experiments
+WINDOW_SCREEN = 1            # Monitor index: 0 = primary, 1 = second monitor
 TEXT_HEIGHT = 0.08           # Height of concept text
 FIXATION_HEIGHT = 0.1        # Height of fixation cross
 TEXT_COLOR = 'white'

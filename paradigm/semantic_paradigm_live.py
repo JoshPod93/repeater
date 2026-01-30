@@ -576,14 +576,20 @@ def run_experiment_live(
     send_biosemi_trigger(block_start_code, f'block_{trigger_block_num}_start')
     print(f"[TRIGGER] Block {trigger_block_num} start (trigger {block_start_code}) sent immediately after connection")
     
-    # Create window (match simulation exactly - use config setting)
+    # Create window (fullscreen on configured monitor, e.g. second monitor)
     win = create_window(
         size=config.get('WINDOW_SIZE', (1024, 768)),
         color=config.get('BACKGROUND_COLOR', 'black'),
-        fullscreen=config.get('FULLSCREEN', False)  # Use config setting (same as simulation)
+        fullscreen=config.get('FULLSCREEN', False),
+        screen=config.get('WINDOW_SCREEN')  # e.g. 1 = second monitor
     )
     fullscreen_status = "fullscreen" if config.get('FULLSCREEN', False) else "windowed"
-    print(f"[DISPLAY] Window created: {config.get('WINDOW_SIZE', (1024, 768))} ({fullscreen_status})")
+    screen_num = config.get('WINDOW_SCREEN')
+    screen_info = f" on monitor {screen_num}" if screen_num is not None else ""
+    # Report actual size (win.size is a numpy array - don't use 'or' or it raises)
+    raw_size = getattr(win, 'size', None)
+    actual_size = tuple(raw_size) if raw_size is not None else config.get('WINDOW_SIZE', (1024, 768))
+    print(f"[DISPLAY] Window created: {actual_size} ({fullscreen_status}{screen_info})")
     
     # Create display manager
     display_config = {
@@ -634,16 +640,26 @@ def run_experiment_live(
     print("\n[WARNING] Experiment starting soon...")
     warning_text = "WARNING: Experiment starting soon.\n\nPress ESCAPE to exit."
     display.show_text(warning_text, height=0.05, color='yellow')
-    core.wait(2.0)  # Show warning for 2 seconds
+    # Allow escape during 2s warning (poll so Esc works immediately)
+    for _ in range(20):
+        core.wait(0.1)
+        keys = event.getKeys(keyList=['escape'])
+        if 'escape' in keys:
+            print("\n[EXIT] Experiment terminated by user (Escape during warning)")
+            if biosemi_conn:
+                close_biosemi_connection(biosemi_conn)
+            win.close()
+            core.quit()
+            return {}
     
     # Countdown from 3
     for count in [3, 2, 1]:
         # Check for escape during countdown
         keys = event.getKeys(keyList=['escape'])
         if 'escape' in keys:
-            print("\n[EXIT] Experiment terminated by user")
+            print("\n[EXIT] Experiment terminated by user (Escape during countdown)")
             if biosemi_conn:
-                close_serial_port()
+                close_biosemi_connection(biosemi_conn)
             win.close()
             core.quit()
             return {}
@@ -652,7 +668,17 @@ def run_experiment_live(
         display.clear_screen()
         core.wait(0.1)  # Brief pause to ensure screen is cleared
         display.show_text(f"Starting in {count}...", height=0.08, color='white')
-        core.wait(1.0)
+        # Poll for escape during 1s countdown
+        for _ in range(10):
+            core.wait(0.1)
+            keys = event.getKeys(keyList=['escape'])
+            if 'escape' in keys:
+                print("\n[EXIT] Experiment terminated by user (Escape during countdown)")
+                if biosemi_conn:
+                    close_biosemi_connection(biosemi_conn)
+                win.close()
+                core.quit()
+                return {}
     
     # Clear screen before experiment starts
     display.clear_screen()

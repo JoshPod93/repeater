@@ -1,119 +1,120 @@
 # Trigger Code Mapping for Semantic Visualization Paradigm
 
-This document provides a comprehensive overview of the trigger codes used in the experiment, their corresponding event names, and their numerical values. These codes are crucial for synchronizing EEG data with experimental events.
+This document lists **every trigger actually sent** in the live experiment. **All codes are 1–160; nothing goes to 200 or 300.** Biosemi uses 8-bit triggers (0–255), and we stay well within that.
 
-## Base Trigger Codes
+**Source of truth:** Codes and event names are taken from:
+- `paradigm/utils/trigger_utils.py` — `TRIGGER_CODES`, `get_trial_start_code`, `get_trial_end_code`, `get_block_start_code`, `get_block_end_code`, `get_beep_code` / `get_beep_codes`
+- `paradigm/semantic_paradigm_live.py` — every `send_trigger()` / `_log_trigger_to_csv()` call
+
+The trigger CSV columns are: `timestamp_psychopy`, `timestamp_absolute`, `trigger_code`, `event_name`, `sent_to_eeg`. The tables below match what appears in that CSV.
+
+---
+
+## Base Trigger Codes (fixed codes, no trial/block index)
 
 The following table lists the base trigger codes (used for events that don't vary by trial/block number):
 
-| Event Name           | Code | Hex   | Description                                   |
-| :------------------- | :--- | :---- | :-------------------------------------------- |
-| `fixation`           | 1    | `0x1` | Fixation cross appears                        |
-| `concept_category_a` | 10   | `0xa` | Category A concept word is displayed          |
-| `concept_category_b` | 20   | `0x14`| Category B concept word is displayed          |
-| `beep_start`         | 30   | `0x1e`| Marks the beginning of the rhythmic beep sequence |
-| `beep_1`             | 31   | `0x1f`| First beep within the sequence                |
-| `beep_2`             | 32   | `0x20`| Second beep within the sequence               |
-| `beep_3`             | 33   | `0x21`| Third beep within the sequence                |
-| `beep_4`             | 34   | `0x22`| Fourth beep within the sequence               |
-| `beep_5`             | 35   | `0x23`| Fifth beep within the sequence                |
-| `beep_6`             | 36   | `0x24`| Sixth beep within the sequence                |
-| `beep_7`             | 37   | `0x25`| Seventh beep within the sequence              |
-| `beep_8`             | 38   | `0x26`| Eighth beep within the sequence               |
+| Code | Event Name (CSV `event_name`) | Description |
+| :--- | :---------------------------- | :---------- |
+| 1    | `fixation`                    | Fixation cross appears (before beeps) |
+| 3    | `trial_indicator_N`            | Trial number shown (N = 1–10); e.g. `trial_indicator_1` |
+| 10   | `concept_{word}_category_A`    | Category A concept onset; e.g. `concept_leg_category_A` |
+| 20   | `concept_{word}_category_B`    | Category B concept onset; e.g. `concept_grape_category_B` |
+| 25   | `mask`                         | Mask onset (after concept) |
+| 30   | `beep_start`                   | Start of beep sequence |
+| 31–38| `beep_1_8`, `beep_2_8`, …, `beep_8_8` | Each beep onset; 0.8 s apart |
+
+**Block-level (N = block number 1–10); CSV e.g. `block_1_start`, `block_1_end`:**
+
+| Event Name      | Code   | Description              |
+| :-------------- | :----- | :----------------------- |
+| `block_N_start` | **60+N** (61–70) | Block N begins (sent once per block) |
+| `block_N_end`   | **70+N** (71–80) | Block N ends (sent once per block)   |
 
 ## Dynamic Trigger Codes
 
 ### Trial-Level Triggers
 
 **Trial Start Codes:**
-- Trial N start = **100 + N**
-- Range: 101-199 (supports up to 99 trials)
-- Examples:
-  - Trial 1 start = **101**
-  - Trial 2 start = **102**
-  - Trial 50 start = **150**
+- Trial N start = **100 + block_local_trial** (N = trial 1–10 within block)
+- Range: **101–110** only (10 trials per block)
+- Examples: Trial 1 start = **101**, Trial 10 start = **110**
 
 **Trial End Codes:**
-- Trial N end = **200 + N**
-- Range: 201-299 (supports up to 99 trials)
-- Examples:
-  - Trial 1 end = **201**
-  - Trial 2 end = **202**
-  - Trial 50 end = **250**
+- Trial N end = **150 + (N mod 10)** (block-local trial 1–10)
+- Range: 151–160
+- Examples: Trial 1 end = **151**, Trial 10 end = **160**
 
 ### Block-Level Triggers
 
 **Block Start Codes:**
-- Block N start = **150 + N**
-- Range: 151-159 (supports up to 9 blocks)
-- Examples:
-  - Block 1 start = **151**
-  - Block 2 start = **152**
-  - Block 5 start = **155**
+- Block N start = **60 + N**
+- Range: 61–70 (supports up to 10 blocks)
+- Examples: Block 1 start = **61**, Block 2 start = **62**
 
 **Block End Codes:**
-- Block N end = **250 + N**
-- Range: 251-259 (supports up to 9 blocks)
-- Examples:
-  - Block 1 end = **251**
-  - Block 2 end = **252**
-  - Block 5 end = **255**
+- Block N end = **70 + N**
+- Range: 71–80
+- Examples: Block 1 end = **71**, Block 2 end = **72**
 
 ## Code Organization Rationale
 
-The trigger codes are organized systematically to provide maximum informational resolution:
+All codes fit in **8-bit (0–255)**. Biosemi and our pipeline use single-byte triggers; nothing exceeds 255.
 
-- **1-9:** Base trial events (e.g., `fixation`)
-- **10-19:** Category A specific events
-- **20-29:** Category B specific events
-- **30-39:** Beep sequence events (8 unique beep codes)
-- **40-49:** Reserved for future trial-level events
-- **50-59:** Reserved for future block-level events
-- **100-199:** Trial start codes (unique per trial)
-- **150-159:** Block start codes (unique per block)
-- **200-299:** Trial end codes (unique per trial)
-- **250-259:** Block end codes (unique per block)
+- **1–9:** Base trial events (fixation=1, trial_indicator=3)
+- **10–19:** Category A (concept = 10)
+- **20–29:** Category B (concept = 20), mask = 25
+- **30–39:** Beep sequence (beep_start=30, beep_1–8 = 31–38)
+- **60–70:** Block start (block N start = 60+N → 61–70)
+- **71–80:** Block end (block N end = 70+N → 71–80)
+- **101–110:** Trial start (trial 1–10 within block)
+- **151–160:** Trial end (trial 1–10 within block)
 
-This systematic assignment provides:
-1. **Unique identification** of every trial and block
-2. **Easy decoding** - trial/block number can be extracted from code
-3. **No overlaps** - all codes are unique
-4. **Future expansion** - plenty of room for additional events
+**Maximum code used: 160.** No codes in the 200s or 300s.
 
 ## Verification
 
-The `scripts/check_triggers.py` script is used to verify the trigger mapping.
+- **Code range used:** 1–160 (all within 0–255, Biosemi 8-bit safe)
+- **Trial codes:** 101–110 (start), 151–160 (end) — block-local trial 1–10
+- **Block codes:** 61–70 (start), 71–80 (end)
+- Run `scripts/validate_triggers.py` and `scripts/validate_captured_data.py` to check BDF vs CSV.
 
-**Verification Results:**
+## Full Trigger Sequence (per block)
 
-- **Base triggers:** 14 unique codes
-- **Dynamic range:** Supports up to 99 trials and 9 blocks
-- **Total possible codes:** 14 base + up to 198 trial codes + up to 18 block codes = 230 codes maximum
-- **Code range:** 1 - 299
-- **Available range:** 0-255 (8-bit parallel port) - Note: codes 256-299 require 9-bit support
+**Block boundaries (once per block):**
+- **Block start:** `block_N_start` → code **60+N** (61, 62, … 70) – sent at block start, before any trials.
+- **Block end:** `block_N_end` → code **70+N** (71, 72, … 80) – sent after the last trial in the block.
 
-**Conclusion:** All trigger codes are unique, properly spaced, and provide maximum informational resolution for detailed analysis.
+**Per trial** (each trigger at event onset):
 
-## Trigger Sequence Per Trial
+1. `trial_N_start` (101–110) – trial begins  
+2. `trial_indicator_N` (3) – trial number shown  
+3. `concept_X_category_A` (10) OR `concept_X_category_B` (20) – concept word onset  
+4. `mask` (25) – mask onset  
+5. `fixation` (1) – fixation before beeps  
+6. `beep_start` (30) – beep sequence start  
+7. `beep_1_8` … `beep_8_8` (31–38) – each beep onset (0.8 s apart)  
+8. `trial_N_end` (151–160) – trial end, rest begins  
 
-1. `trial_N_start` (100+N) - Trial N begins
-2. `fixation` (1) - Fixation cross appears
-3. `concept_category_a` (10) OR `concept_category_b` (20) - Concept word shown
-4. `beep_start` (30) - Beep sequence begins
-5. `beep_1` (31) - First beep/repetition
-6. `beep_2` (32) - Second beep/repetition
-7. `beep_3` (33) - Third beep/repetition
-8. `beep_4` (34) - Fourth beep/repetition
-9. `beep_5` (35) - Fifth beep/repetition
-10. `beep_6` (36) - Sixth beep/repetition
-11. `beep_7` (37) - Seventh beep/repetition
-12. `beep_8` (38) - Eighth beep/repetition
-13. `trial_N_end` (200+N) - Trial N ends, rest period begins
+So the full order is: **block_N_start** → (trial 1 … trial 10) → **block_N_end**.  
 
-## Block-Level Triggers
+## Epoching
 
-- `block_N_start` (150+N) - Block N begins (sent once at block start)
-- `block_N_end` (250+N) - Block N ends (sent once at block end)
+All codes are in 0–255 (Biosemi-safe). Triggers are sent at stimulus onset, so BDF events are suitable for building epochs.
+
+**Concept-locked epochs (Category A vs B):**
+- Use event codes **10** (Category A) and **20** (Category B) at concept word onset.  
+- MNE `event_id`: e.g. `{'Category_A': 10, 'Category_B': 20}`.
+
+**Beep/repetition-locked epochs:**
+- Use event codes **31–38** for the 8 beeps (0.8 s SOA).  
+- Epoch around each beep for repetition-level analysis.
+
+**Trial boundaries:**
+- Trial start: **101–110**; trial end: **151–160** (block-local trial index 1–10).  
+- Block boundaries: **61–70** (start), **71–80** (end).
+
+Validation: run `scripts/validate_triggers.py` (BDF vs CSV) and `scripts/validate_captured_data.py` to confirm trigger count and sequence match.
 
 ## Benefits of Dynamic Trigger Codes
 
