@@ -2,7 +2,7 @@
 
 Quick reference for running all experiment and analysis commands.
 
-**For initial setup on a new machine, see `SETUP.md`**
+**For initial setup on a new machine, see `README.md`**
 
 ## Prerequisites
 
@@ -129,21 +129,6 @@ conda activate repeat
 python scripts/generate_ground_truth_triggers.py --participant-id 9999
 ```
 
-## Environment Setup
-
-### Setup Analysis Environment
-
-Create the `repeat_analyse` conda environment:
-
-**Windows:**
-```powershell
-.\scripts\setup_analysis_env.ps1
-```
-
-**Linux/Mac:**
-```bash
-bash scripts/setup_analysis_env.sh
-```
 
 ## Git Utilities
 

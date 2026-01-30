@@ -6,191 +6,193 @@ Author: A. Tates (JP)
 BCI-NE Lab, University of Essex  
 Date: January 26, 2026
 
-## Project Structure
+## Installation
 
+### Prerequisites
+
+- Conda (Miniconda or Anaconda)
+- Git
+- Python 3.10+
+
+### Setup Steps
+
+1. **Clone the Repository**
+
+```bash
+git clone <repository-url>
+cd repeater
 ```
-repeater/
-├── .cursorrules              # Cursor IDE rules and coding standards
-├── environment.yml           # Conda environment specification
-├── requirements.txt          # Python dependencies (if not using conda)
-├── README.md                 # This file
-│
-├── setup/                    # Setup scripts
-│   ├── setup_environment.sh  # Linux/Mac environment setup
-│   ├── setup_environment.bat # Windows environment setup
-│   └── README.md             # Setup instructions
-│
-├── scripts/                  # Utility scripts
-│   ├── git_commit.py         # Git commit tool
-│   ├── validate_triggers.py  # BDF vs CSV trigger validation
-│   ├── validate_captured_data.py  # Quick validation
-│   ├── comprehensive_data_evaluation.py  # Full data evaluation
-│   ├── generate_ground_truth_triggers.py  # Ground truth generation
-│   ├── test_biosemi_connection.py  # Biosemi connection test
-│   ├── test_biosemi_triggers.py    # Biosemi trigger test
-│   ├── test_config_randomization.py  # Randomization test
-│   ├── run_all_blocks.sh     # Run all blocks (Linux/Mac)
-│   ├── run_all_blocks.ps1    # Run all blocks (Windows)
-│   ├── setup_analysis_env.ps1      # Analysis env setup (Windows)
-│   ├── setup_analysis_env.sh       # Analysis env setup (Linux/Mac)
-│   └── README.md             # Scripts documentation
-│
-├── paradigm/                 # Main experiment code
-│   ├── __init__.py
-│   ├── utils/                # Utility function banks
-│   │   ├── __init__.py
-│   │   ├── trigger_utils.py  # Trigger handling
-│   │   ├── display_utils.py  # Visual presentation
-│   │   ├── data_utils.py     # Data logging/saving
-│   │   ├── randomization_utils.py  # Stimulus randomization
-│   │   └── biosemi_utils.py  # Biosemi connection utilities
-│   ├── semantic_paradigm_live.py  # Live experiment (with Biosemi)
-│   └── semantic_paradigm_simulation.py  # Simulation variant (testing)
-│
-├── config/                   # Configuration files
-│   ├── experiment_config.py  # Main experiment config
-│   ├── load_config.py        # Config loader
-│   └── __init__.py
-│
-├── data/                     # Experimental data/results ONLY
-│   └── results/              # Subject results
-│
-├── analysis/                 # Analysis scripts
-│   └── tangent_space_logistic_regressor_classifier.py
-│
-├── requirements_analysis.txt # Analysis environment dependencies
-│
-├── docs/                     # Documentation
-│   ├── git_and_trigger_guide.md
-│   └── speech_imagery_research_summary.md
-│
-├── examples/                 # Example code
-│   └── rhytmic_experiment.py
-│
-└── tests/                    # Unit tests
-    └── __init__.py
+
+2. **Create Conda Environments**
+
+```bash
+# Create repeat environment (for running experiments)
+conda env create -f environment_repeat.yml
+
+# Create repeat_analyse environment (for analysis)
+conda env create -f environment_repeat_analyse.yml
+```
+
+Alternatively, using requirements files:
+
+```bash
+# Create repeat environment
+conda create -n repeat python=3.10
+conda activate repeat
+pip install -r requirements_repeat.txt
+
+# Create repeat_analyse environment
+conda create -n repeat_analyse python=3.10
+conda activate repeat_analyse
+pip install -r requirements_repeat_analyse.txt
+```
+
+3. **Configure Biosemi Port (if needed)**
+
+The default Biosemi port is `COM4` on Windows or `/dev/ttyUSB0` on Linux.
+
+To override the default port, set an environment variable:
+
+**Windows (PowerShell):**
+```powershell
+$env:BIOSEMI_PORT="COM3"
+```
+
+**Windows (CMD):**
+```cmd
+set BIOSEMI_PORT=COM3
+```
+
+**Linux/Mac:**
+```bash
+export BIOSEMI_PORT=/dev/ttyUSB1
+```
+
+Or edit `config/experiment_config.py` to change the default.
+
+4. **Verify Installation**
+
+```bash
+# Activate repeat environment
+conda activate repeat
+python -c "from config import load_config; print('Config loaded successfully')"
+
+# Activate repeat_analyse environment
+conda activate repeat_analyse
+python -c "import mne; print(f'MNE version: {mne.__version__}')"
 ```
 
 ## Quick Start
 
-### 1. Setup Environment
-
-**For detailed setup instructions, see `SETUP.md`**
-
-Quick setup:
+### Run Live Experiment
 
 ```bash
-# Create both conda environments
-conda env create -f environment_repeat.yml
-conda env create -f environment_repeat_analyse.yml
-
-# Activate environment
 conda activate repeat
-```
-
-### 2. Run Experiment
-
-#### Live Mode (with Biosemi EEG capture):
-```bash
-# Run live experiment (single block - auto-detects next block)
 python paradigm/semantic_paradigm_live.py --participant-id 9999
-
-# Run all blocks sequentially
-bash scripts/run_all_blocks.sh 9999
-# Or on Windows PowerShell:
-.\scripts\run_all_blocks.ps1 -ParticipantId 9999
 ```
 
-#### Simulation Mode (for testing without hardware):
+### Run All Blocks
+
 ```bash
-# Run simulation
+bash scripts/run_all_blocks.sh 9999
+```
+
+### Run Simulation
+
+```bash
+conda activate repeat
 python paradigm/semantic_paradigm_simulation.py --participant-id sim_9999
 ```
 
-#### Test Biosemi Connection:
-```bash
-# Test Biosemi connection
-python scripts/test_biosemi_connection.py --port COM3
-
-# Test trigger sending
-python scripts/test_biosemi_triggers.py --port COM3 --n-triggers 10
-```
-
-### 3. Analysis Environment
-
-The `repeat_analyse` environment is already created in step 1. Activate it for validation/analysis:
+### Validate Data
 
 ```bash
 conda activate repeat_analyse
 python scripts/validate_triggers.py --participant-id 9999
 ```
 
-For all available commands, see `launch_commands.md`.
+**For all available commands, see `launch_commands.md`**
 
-## Development Guidelines
+## Project Structure
 
-See `.cursorrules` for comprehensive coding standards. Key points:
-
-* **Always use conda environment**: `conda activate repeat`
-* **Use git for version control**: Commit frequently with descriptive messages
-* **CLI for launching**: All scripts use command-line arguments
-* **Modular code**: Small functions, dynamic pathing, clear separation of concerns
-* **Clean codebase**: Remove redundant code, follow best practices
+```
+repeater/
+├── config/              # Configuration files
+├── paradigm/            # Experiment code
+│   ├── semantic_paradigm_live.py      # Live experiment
+│   ├── semantic_paradigm_simulation.py # Simulation
+│   └── utils/           # Utility modules
+├── scripts/             # Utility scripts
+├── data/                # Data directory (created automatically)
+│   ├── results/         # Experiment results
+│   └── sub_*/           # BDF files
+├── docs/                # Documentation
+├── environment_repeat.yml           # Conda env for experiments
+├── environment_repeat_analyse.yml   # Conda env for analysis
+├── requirements_repeat.txt          # Pip requirements for experiments
+└── requirements_repeat_analyse.txt  # Pip requirements for analysis
+```
 
 ## Key Features
 
-* **Trigger System**: EEG trigger sending via parallel port with dual logging (EEG first, then PsychoPy)
-* **Modular Design**: Separated utilities for triggers, display, data, and randomization
-* **Configuration Management**: Centralized config with easy parameter modification
-* **Data Logging**: Comprehensive per-trial data logging in JSON + NumPy formats
-* **Randomization**: Date/time-based seeding for unique trial sequences per participant
+- **Trigger System**: EEG trigger sending via Biosemi serial port with CSV logging
+- **Modular Design**: Separated utilities for triggers, display, data, and randomization
+- **Configuration Management**: Centralized config with easy parameter modification
+- **Data Logging**: Comprehensive per-trial data logging in JSON + NumPy formats
+- **Block-based**: Self-contained blocks with automatic block detection
 
 ## Dependencies
 
 See `environment_repeat.yml` and `environment_repeat_analyse.yml` for complete lists. Key dependencies:
 
-* Python 3.10
-* PsychoPy (stimulus presentation)
-* numpy, scipy, pandas (scientific computing)
-* mne (EEG processing - analysis environment)
-* pyserial (Biosemi communication)
+- Python 3.10
+- PsychoPy (stimulus presentation)
+- numpy, scipy, pandas (scientific computing)
+- mne (EEG processing - analysis environment)
+- pyserial (Biosemi communication)
 
-## Directory Organization Logic
+## Troubleshooting
 
-* **`setup/`**: Setup scripts (environment initialization) - kept at root level for easy discovery
-* **`scripts/`**: Utility scripts (git tools, etc.) - project-level utilities
-* **`paradigm/`**: All experiment code, utilities, and launchers - self-contained experiment module
-* **`config/`**: Configuration files - centralized parameter management
-* **`data/`**: ONLY experimental results/data - clear separation from code and config
-* **`analysis/`**: Analysis scripts - post-processing tools
-* **`docs/`**: Documentation - project documentation
-* **`tests/`**: Unit tests - test suite
+### Serial Port Issues
 
-## Git Workflow
+- **Windows**: Check Device Manager for COM port number
+- **Linux**: Check `/dev/ttyUSB*` or `/dev/ttyACM*` devices
+- Ensure no other software is using the port
+- Try different port numbers if default doesn't work
 
-Use the git commit tool for consistent commits:
+### Import Errors
 
-```bash
-python scripts/git_commit.py -m "Your commit message"
-```
+- Ensure correct conda environment is activated
+- Reinstall dependencies: `pip install -r requirements_*.txt`
+- Check Python version: `python --version` (should be 3.10+)
+
+### Path Issues
+
+- All paths use `pathlib.Path` for cross-platform compatibility
+- Data directories are created automatically
+- No hardcoded absolute paths in code
+
+## Notes
+
+- All paths are relative to project root
+- No hardcoded user-specific paths
+- Environment variables can override defaults
+- Works on Windows, Linux, and Mac (with appropriate serial port configuration)
 
 ## Experimental Design
 
 Each trial consists of:
 
-1. **Fixation cross** (2.0s) - Prepares participant
-2. **Concept presentation** (2.0s) - Shows word (e.g., "hand" or "apple")
-3. **Rhythmic beep sequence** (6.4s) - 8 beeps at 0.8s intervals, blank screen
-4. **Rest period** (1.0s) - Blank screen
+1. **Trial indicator** - Shows trial number
+2. **Concept presentation** (1.5s) - Shows word (e.g., "hand" or "apple")
+3. **Visual mask** (0.3s) - Backward mask
+4. **Fixation cross** (2.0s) - Prepares participant
+5. **Rhythmic beep sequence** (6.4s) - 8 beeps at 0.8s intervals
+6. **Rest period** (1.0s) - Blank screen
 
-**Total per trial**: ~11.4 seconds
+**Total per trial**: ~16 seconds  
+**Trials per block**: 10  
+**Blocks**: 10  
+**Total trials**: 100
 
-Based on research findings showing rhythmic protocols drive superior decoding accuracy (R=0.60, p<0.005).
-
-## License
-
-[Add license information if applicable]
-
-## About
-
-Rhythmic Semantic Visualization Paradigm - BCI experiment adaptation from speech imagery to semantic visualization.
+Based on research findings showing rhythmic protocols drive superior decoding accuracy.
