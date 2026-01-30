@@ -332,13 +332,19 @@ def run_experiment_live(
     print(f"Mode: LIVE (Biosemi EEG capture)")
     print("="*80)
     
+    # Load configuration first (needed for BIOSEMI_PORT)
+    if config_path is None:
+        config_path = project_root / 'config' / 'experiment_config.py'
+    config = load_config(str(config_path))
+    
     # Connect to Biosemi (REQUIRED - exit if fails, per reference protocol)
     print("\n[EEG] INITIALIZING EEG TRIGGER SYSTEM")
     print("=" * 80)
     
     # Use port from config or environment variable (defaults to COM4 on Windows)
     from paradigm.utils.biosemi_utils import open_serial_port, get_default_port
-    biosemi_port = config.get('BIOSEMI_PORT', get_default_port())
+    import os
+    biosemi_port = os.environ.get('BIOSEMI_PORT') or config.get('BIOSEMI_PORT', get_default_port())
     print(f"Attempting to open serial port: {biosemi_port}")
     
     biosemi_conn = open_serial_port(port=biosemi_port)
@@ -362,11 +368,6 @@ def run_experiment_live(
     
     print("[OK] EEG trigger system initialized successfully")
     print("=" * 80)
-    
-    # Load configuration
-    if config_path is None:
-        config_path = project_root / 'config' / 'experiment_config.py'
-    config = load_config(str(config_path))
     
     if verbose:
         print(f"\n[CONFIG] Loaded configuration from: {config_path}")

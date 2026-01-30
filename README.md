@@ -25,27 +25,33 @@ cd repeater
 
 2. **Create Conda Environments**
 
+**Recommended method (using requirements files):**
+
 ```bash
 # Create repeat environment (for running experiments)
-conda env create -f environment_repeat.yml
-
-# Create repeat_analyse environment (for analysis)
-conda env create -f environment_repeat_analyse.yml
-```
-
-Alternatively, using requirements files:
-
-```bash
-# Create repeat environment
-conda create -n repeat python=3.10
+conda create -n repeat python=3.10 -y
 conda activate repeat
 pip install -r requirements_repeat.txt
 
-# Create repeat_analyse environment
-conda create -n repeat_analyse python=3.10
+# Create repeat_analyse environment (for analysis)
+conda create -n repeat_analyse python=3.10 -y
 conda activate repeat_analyse
 pip install -r requirements_repeat_analyse.txt
 ```
+
+**Alternative method (using conda environment files):**
+
+If you prefer to use the conda environment YAML files:
+
+```bash
+# Create repeat environment
+conda env create -f environment_repeat.yml
+
+# Create repeat_analyse environment
+conda env create -f environment_repeat_analyse.yml
+```
+
+*Note: Some systems may encounter issues with conda environment creation due to cache or permission restrictions. If you encounter errors, use the requirements file method above.*
 
 3. **Configure Biosemi Port (if needed)**
 

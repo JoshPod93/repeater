@@ -84,7 +84,7 @@ def main():
     
     print(f"\n3. TRIGGER COUNTS:")
     total_sent = len(all_triggers)
-    expected_total = 1320  # 10 blocks × 132 triggers
+    expected_total = 1520  # 10 blocks × 152 triggers per block
     print(f"   Total triggers sent: {total_sent}")
     print(f"   Expected: {expected_total}")
     print(f"   Difference: {total_sent - expected_total}")
