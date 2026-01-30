@@ -75,27 +75,20 @@ repeater/
 
 ### 1. Setup Environment
 
-```bash
-# Linux/Mac
-chmod +x setup/setup_environment.sh
-./setup/setup_environment.sh
+**For detailed setup instructions, see `SETUP.md`**
 
-# Windows
-setup\setup_environment.bat
-
-# Or manually:
-conda create -n repeat python=3.9
-conda activate repeat
-conda env update -n repeat -f environment.yml --prune
-```
-
-### 2. Activate Environment
+Quick setup:
 
 ```bash
+# Create both conda environments
+conda env create -f environment_repeat.yml
+conda env create -f environment_repeat_analyse.yml
+
+# Activate environment
 conda activate repeat
 ```
 
-### 3. Run Experiment
+### 2. Run Experiment
 
 #### Live Mode (with Biosemi EEG capture):
 ```bash
@@ -123,34 +116,16 @@ python scripts/test_biosemi_connection.py --port COM3
 python scripts/test_biosemi_triggers.py --port COM3 --n-triggers 10
 ```
 
-### 2. Setup Analysis Environment (Optional)
+### 3. Analysis Environment
 
-For validation, preprocessing, and analysis tasks, use a separate environment:
+The `repeat_analyse` environment is already created in step 1. Activate it for validation/analysis:
 
-**Windows (PowerShell):**
-```powershell
-.\scripts\setup_analysis_env.ps1
-```
-
-**Linux/Mac:**
-```bash
-bash scripts/setup_analysis_env.sh
-```
-
-**Manual setup:**
-```bash
-conda create -n repeat_analyse python=3.10 -y
-conda activate repeat_analyse
-pip install -r requirements_analysis.txt
-```
-
-**Using the analysis environment:**
 ```bash
 conda activate repeat_analyse
 python scripts/validate_triggers.py --participant-id 9999
 ```
 
-See `scripts/README_analysis_env.md` for more details.
+For all available commands, see `launch_commands.md`.
 
 ## Development Guidelines
 
@@ -172,12 +147,13 @@ See `.cursorrules` for comprehensive coding standards. Key points:
 
 ## Dependencies
 
-See `environment.yml` for complete list. Key dependencies:
+See `environment_repeat.yml` and `environment_repeat_analyse.yml` for complete lists. Key dependencies:
 
-* Python 3.9
+* Python 3.10
 * PsychoPy (stimulus presentation)
-* numpy (numerical operations)
-* pathlib (dynamic pathing)
+* numpy, scipy, pandas (scientific computing)
+* mne (EEG processing - analysis environment)
+* pyserial (Biosemi communication)
 
 ## Directory Organization Logic
 
